@@ -57,8 +57,10 @@ export const ghCreatePR = tool(
     base: z.string().default("main").describe("Base branch name"),
   },
   async ({ title, body, head, base }) => {
+    const repo = process.env.GITHUB_REPO;
+    if (!repo) throw new Error("GITHUB_REPO not set (e.g. 'owner/repo')");
     const worktreeDir = `/data/worktrees/${head}`;
-    const result = await run("gh", ["pr", "create", "--title", title, "--body", body, "--base", base, "--head", head], worktreeDir);
+    const result = await run("gh", ["pr", "create", "--title", title, "--body", body, "--base", base, "--head", head, "--repo", repo], worktreeDir);
     return { content: [{ type: "text" as const, text: result }] };
   },
 );
@@ -85,8 +87,10 @@ export const ghPrReview = tool(
     body: z.string().describe("Review comment body in markdown"),
   },
   async ({ prNumber, action, body }) => {
+    const repo = process.env.GITHUB_REPO;
+    if (!repo) throw new Error("GITHUB_REPO not set (e.g. 'owner/repo')");
     const flag = action === "approve" ? "--approve" : "--request-changes";
-    const result = await run("gh", ["pr", "review", String(prNumber), flag, "--body", body]);
+    const result = await run("gh", ["pr", "review", String(prNumber), flag, "--body", body, "--repo", repo]);
     return { content: [{ type: "text" as const, text: result || `PR #${prNumber} reviewed (${action})` }] };
   },
 );
