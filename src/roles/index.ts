@@ -22,6 +22,10 @@ export interface RoleConfig {
   hasDevAgent: boolean;
   /** Max turns for the agent session */
   maxTurns: number;
+  /** Model to use for this role's main agent */
+  model: string;
+  /** Model to use for the dev-agent subagent (if hasDevAgent) */
+  devAgentModel?: string;
 }
 
 const roles: Record<string, RoleConfig> = {

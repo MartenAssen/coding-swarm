@@ -2,8 +2,6 @@ import { query, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 import { traceAgent } from "./lib/tracing.js";
 import type { RoleConfig } from "./roles/index.js";
 
-const MODEL = "claude-sonnet-4-6";
-
 function extractText(message: any): string {
   const content = message?.message?.content;
   if (!Array.isArray(content)) return "";
@@ -41,14 +39,14 @@ export async function invokeAgent(
             "You are an autonomous dev agent working in Steyn's homelab repo. " +
             "Implement tasks fully. Commit your work with descriptive messages. " +
             "Do not ask questions — make reasonable decisions and proceed.",
-          model: "sonnet",
+          model: role.devAgentModel ?? "opus",
         };
       }
 
       const session = query({
         prompt,
         options: {
-          model: MODEL,
+          model: role.model,
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           maxTurns: role.maxTurns,
