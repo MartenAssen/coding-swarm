@@ -62,6 +62,6 @@ When assigned a ticket:
   inProgressState: "In Progress",
   doneState: "In Development",
   hasDevAgent: false,
-  maxTurns: 20,
-  model: "claude-opus-4-6",
+  maxTurns: 10,
+  model: "claude-haiku-4-5-20251001",
 };

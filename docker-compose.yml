@@ -5,7 +5,6 @@ services:
     restart: unless-stopped
     environment:
       AGENT_ROLE: pm
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       LINEAR_API_KEY: ${LINEAR_API_KEY}
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
@@ -17,6 +16,7 @@ services:
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
+      - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
 
   engineer:
     build: .
@@ -24,7 +24,6 @@ services:
     restart: unless-stopped
     environment:
       AGENT_ROLE: engineer
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       LINEAR_API_KEY: ${LINEAR_API_KEY}
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
@@ -36,6 +35,7 @@ services:
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
+      - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
 
   tester:
     build: .
@@ -43,7 +43,6 @@ services:
     restart: unless-stopped
     environment:
       AGENT_ROLE: tester
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       LINEAR_API_KEY: ${LINEAR_API_KEY}
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
@@ -55,6 +54,7 @@ services:
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
+      - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
 
 volumes:
   repo-data:

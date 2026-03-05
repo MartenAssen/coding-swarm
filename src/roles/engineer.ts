@@ -72,5 +72,5 @@ When assigned a ticket:
   hasDevAgent: true,
   maxTurns: 30,
   model: "claude-sonnet-4-6",
-  devAgentModel: "opus",
+  devAgentModel: "sonnet",
 };

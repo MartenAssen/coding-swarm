@@ -66,6 +66,6 @@ When assigned a ticket for review:
   doneState: "Done",
   hasDevAgent: true,
   maxTurns: 20,
-  model: "claude-opus-4-6",
-  devAgentModel: "opus",
+  model: "claude-sonnet-4-6",
+  devAgentModel: "sonnet",
 };
