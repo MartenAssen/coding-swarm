@@ -75,3 +75,18 @@ export const gitCleanupWorktree = tool(
     return { content: [{ type: "text" as const, text: `Worktree removed for ${branch}` }] };
   },
 );
+
+export const ghPrReview = tool(
+  "gh_pr_review",
+  "Approve or request changes on a GitHub pull request.",
+  {
+    prNumber: z.number().describe("PR number"),
+    action: z.enum(["approve", "request-changes"]).describe("Review action"),
+    body: z.string().describe("Review comment body in markdown"),
+  },
+  async ({ prNumber, action, body }) => {
+    const flag = action === "approve" ? "--approve" : "--request-changes";
+    const result = await run("gh", ["pr", "review", String(prNumber), flag, "--body", body]);
+    return { content: [{ type: "text" as const, text: result || `PR #${prNumber} reviewed (${action})` }] };
+  },
+);
