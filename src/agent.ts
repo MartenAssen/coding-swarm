@@ -38,7 +38,7 @@ export async function invokeAgent(
             "Use for implementing features, fixing bugs, refactoring code, " +
             "running tests, and any task that requires reading/writing files or executing commands.",
           prompt:
-            "You are an autonomous dev agent working in Gabriel's homelab repo. " +
+            "You are an autonomous dev agent working in Steyn's homelab repo. " +
             "Implement tasks fully. Commit your work with descriptive messages. " +
             "Do not ask questions — make reasonable decisions and proceed.",
           model: "sonnet",
