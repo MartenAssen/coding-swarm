@@ -90,6 +90,44 @@ export const linearAddComment = tool(
   },
 );
 
+export const linearCreateIssue = tool(
+  "linear_create_issue",
+  "Create a new Linear issue, optionally as a sub-issue of a parent.",
+  {
+    title: z.string().describe("Issue title"),
+    description: z.string().describe("Issue description in markdown"),
+    teamKey: z.string().describe("Team key, e.g. 'ENG'"),
+    parentId: z.string().optional().describe("Parent issue ID to create as sub-issue"),
+    labelNames: z.array(z.string()).optional().describe("Label names to apply"),
+  },
+  async ({ title, description, teamKey, parentId, labelNames }) => {
+    const client = getClient();
+    const teams = await client.teams({ filter: { key: { eq: teamKey } } });
+    const team = teams.nodes[0];
+    if (!team) throw new Error(`Team '${teamKey}' not found`);
+
+    let labelIds: string[] | undefined;
+    if (labelNames?.length) {
+      const labels = await team.labels();
+      labelIds = labels.nodes
+        .filter((l) => labelNames.some((n) => n.toLowerCase() === l.name.toLowerCase()))
+        .map((l) => l.id);
+    }
+
+    const result = await client.createIssue({
+      title,
+      description,
+      teamId: team.id,
+      parentId,
+      labelIds,
+    });
+    const issue = await result.issue;
+    return {
+      content: [{ type: "text" as const, text: `Created ${issue?.identifier}: ${issue?.title}` }],
+    };
+  },
+);
+
 /** Query Linear for issues matching a filter. Used by the poller. */
 export async function queryIssues(filter: {
   label?: string;
