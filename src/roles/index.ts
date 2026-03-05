@@ -1,5 +1,6 @@
+import { role as pmRole } from "./pm.js";
 import { role as engineerRole } from "./engineer.js";
-import { role as qaRole } from "./qa.js";
+import { role as testerRole } from "./qa.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface RoleConfig {
@@ -29,13 +30,14 @@ export interface RoleConfig {
 }
 
 const roles: Record<string, RoleConfig> = {
+  pm: pmRole,
   engineer: engineerRole,
-  qa: qaRole,
+  tester: testerRole,
 };
 
 export function loadRole(): RoleConfig {
   const name = process.env.AGENT_ROLE ?? "engineer";
   const role = roles[name];
-  if (!role) throw new Error(`Unknown AGENT_ROLE: ${name}`);
+  if (!role) throw new Error(`Unknown AGENT_ROLE: ${name}. Available: ${Object.keys(roles).join(", ")}`);
   return role;
 }
