@@ -34,8 +34,8 @@ RUN npm install --omit=dev --legacy-peer-deps
 COPY --from=builder /app/dist/ dist/
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh \
-  && mkdir -p /data/repo /data/worktrees \
-  && chown -R node:node /app /data
+  && mkdir -p /data/repo /data/worktrees /home/node/.claude \
+  && chown -R node:node /app /data /home/node/.claude
 
 # Run as non-root 'node' user (UID 1000, already in base image)
 # Required: Claude Code CLI refuses --dangerously-skip-permissions as root

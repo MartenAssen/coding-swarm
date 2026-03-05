@@ -47,6 +47,7 @@ export async function invokeAgent(
         prompt,
         options: {
           model: role.model,
+          cwd: process.env.REPO_DIR || "/data/repo",
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           maxTurns: role.maxTurns,
@@ -59,21 +60,34 @@ export async function invokeAgent(
         },
       });
 
-      for await (const message of session) {
-        console.log(
-          `[sdk] message type=${message.type}${"subtype" in message ? ` subtype=${message.subtype}` : ""}`,
-        );
-        if (message.type === "result") {
-          const msg = message as any;
-          if (msg.subtype === "success") {
-            resultText = msg.result;
-          } else {
-            resultText = `Error: ${msg.errors?.join("; ") ?? msg.subtype}`;
-            console.error(
-              `[sdk] result error:`,
-              JSON.stringify(msg).slice(0, 500),
-            );
+      try {
+        for await (const message of session) {
+          console.log(
+            `[sdk] message type=${message.type}${"subtype" in message ? ` subtype=${message.subtype}` : ""}`,
+          );
+          if (message.type === "result") {
+            const msg = message as any;
+            if (msg.subtype === "success") {
+              resultText = msg.result;
+            } else {
+              resultText = `Error: ${msg.errors?.join("; ") ?? msg.subtype}`;
+              console.error(
+                `[sdk] result error:`,
+                JSON.stringify(msg).slice(0, 500),
+              );
+            }
           }
+        }
+      } catch (err) {
+        // The SDK throws if the Claude Code process exits with non-zero,
+        // even after sending a success result. If we already got a result, use it.
+        if (resultText) {
+          console.warn(
+            `[sdk] Process exited with error after success result, ignoring:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        } else {
+          throw err;
         }
       }
 
