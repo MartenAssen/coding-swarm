@@ -90,6 +90,43 @@ export const linearAddComment = tool(
   },
 );
 
+export const linearUpdateIssue = tool(
+  "linear_update_issue",
+  "Update a Linear issue's description, title, priority, or labels.",
+  {
+    issueId: z.string().describe("Issue ID (UUID) or identifier (e.g. ENG-123)"),
+    title: z.string().optional().describe("New title"),
+    description: z.string().optional().describe("New description (replaces existing). Use linear_get_issue first to read current description and append to it."),
+    priority: z.number().optional().describe("Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low"),
+    labelNames: z.array(z.string()).optional().describe("Label names to set (replaces existing labels)"),
+  },
+  async ({ issueId, title, description, priority, labelNames }) => {
+    const client = getClient();
+    const issue = await client.issue(issueId);
+
+    const update: Record<string, unknown> = {};
+    if (title !== undefined) update.title = title;
+    if (description !== undefined) update.description = description;
+    if (priority !== undefined) update.priority = priority;
+
+    if (labelNames?.length) {
+      const team = await issue.team;
+      if (team) {
+        const labels = await team.labels();
+        update.labelIds = labels.nodes
+          .filter((l) => labelNames.some((n) => n.toLowerCase() === l.name.toLowerCase()))
+          .map((l) => l.id);
+      }
+    }
+
+    await client.updateIssue(issue.id, update);
+    const fields = Object.keys(update).join(", ");
+    return {
+      content: [{ type: "text" as const, text: `Updated ${issue.identifier}: ${fields}` }],
+    };
+  },
+);
+
 export const linearCreateIssue = tool(
   "linear_create_issue",
   "Create a new Linear issue, optionally as a sub-issue of a parent.",

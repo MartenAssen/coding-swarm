@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { role as pmRole } from "./pm.js";
 import { role as engineerRole } from "./engineer.js";
 import { role as testerRole } from "./qa.js";
@@ -32,6 +30,18 @@ export interface RoleConfig {
   model: string;
   /** Model to use for the dev-agent subagent (if hasDevAgent) */
   devAgentModel?: string;
+  /** Effort level for thinking depth */
+  effort?: "low" | "medium" | "high" | "max";
+  /** Maximum budget in USD per session */
+  maxBudgetUsd?: number;
+  /** Fallback model when primary is rate-limited */
+  fallbackModel?: string;
+  /** Built-in tools to block (overrides bypassPermissions) */
+  disallowedTools?: string[];
+  /** Tools the dev-agent is allowed to use */
+  devAgentTools?: string[];
+  /** Max turns for the dev-agent per invocation */
+  devAgentMaxTurns?: number;
 }
 
 const roles: Record<string, RoleConfig> = {
@@ -40,31 +50,9 @@ const roles: Record<string, RoleConfig> = {
   tester: testerRole,
 };
 
-function readProjectContext(): string {
-  const repoDir = process.env.REPO_DIR || "/data/repo";
-  try {
-    return readFileSync(join(repoDir, "CLAUDE.md"), "utf-8").trim();
-  } catch {
-    console.warn(`No CLAUDE.md found in ${repoDir}, skipping project context injection`);
-    return "";
-  }
-}
-
 export function loadRole(): RoleConfig {
   const name = process.env.AGENT_ROLE ?? "engineer";
   const role = roles[name];
   if (!role) throw new Error(`Unknown AGENT_ROLE: ${name}. Available: ${Object.keys(roles).join(", ")}`);
-
-  const projectContext = readProjectContext();
-  if (projectContext) {
-    role.systemPrompt = role.systemPrompt.replace(
-      "{PROJECT_CONTEXT}",
-      `## Project Context\n${projectContext}`,
-    );
-  } else {
-    role.systemPrompt = role.systemPrompt.replace("{PROJECT_CONTEXT}\n\n", "");
-    role.systemPrompt = role.systemPrompt.replace("{PROJECT_CONTEXT}", "");
-  }
-
   return role;
 }

@@ -1,6 +1,18 @@
-import { query, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
+import {
+  query,
+  createSdkMcpServer,
+  type HookCallback,
+  type SubagentStopHookInput,
+} from "@anthropic-ai/claude-agent-sdk";
 import { traceAgent } from "./lib/tracing.js";
 import type { RoleConfig } from "./roles/index.js";
+
+export interface AgentResult {
+  text: string;
+  costUsd: number;
+  numTurns: number;
+  durationMs: number;
+}
 
 function formatMessage(message: any): string {
   const base = `[sdk] ${message.type}${
@@ -13,7 +25,6 @@ function formatMessage(message: any): string {
 
     const parts: string[] = [];
 
-    // Collect text (truncated)
     const text = content
       .filter((b: any) => b.type === "text")
       .map((b: any) => b.text)
@@ -23,7 +34,6 @@ function formatMessage(message: any): string {
       parts.push(text.length > 200 ? text.slice(0, 200) + "..." : text);
     }
 
-    // Collect tool uses
     const tools = content
       .filter((b: any) => b.type === "tool_use")
       .map((b: any) => b.name);
@@ -38,7 +48,6 @@ function formatMessage(message: any): string {
     const content = message?.message?.content;
     if (!Array.isArray(content)) return base;
 
-    // Show tool results summary
     const toolResults = content.filter((b: any) => b.type === "tool_result");
     if (toolResults.length) {
       return `${base} | ${toolResults.length} tool result(s)`;
@@ -49,19 +58,43 @@ function formatMessage(message: any): string {
   return base;
 }
 
+// Hook: log MCP tool calls for audit trail
+const mcpAuditHook: HookCallback = async (input, _toolUseID, _ctx) => {
+  if (input.hook_event_name === "PostToolUse") {
+    const postInput = input as any;
+    console.log(
+      `[audit] ${postInput.tool_name}(${JSON.stringify(postInput.tool_input).slice(0, 150)})`,
+    );
+  }
+  return {};
+};
+
+// Hook: log subagent completion
+const subagentStopHook: HookCallback = async (input, _toolUseID, _ctx) => {
+  const subInput = input as SubagentStopHookInput;
+  console.log(
+    `[audit] subagent ${subInput.agent_type} completed (id: ${subInput.agent_id})`,
+  );
+  return {};
+};
+
 export async function invokeAgent(
   prompt: string,
   role: RoleConfig,
-): Promise<string> {
+): Promise<AgentResult> {
   return traceAgent(
     `${role.name}-invoke`,
     prompt,
     { role: role.name, displayName: role.displayName },
     async () => {
       let resultText = "";
+      let costUsd = 0;
+      let numTurns = 0;
+      let durationMs = 0;
 
+      const mcpServerName = `${role.name}-tools`;
       const toolServer = createSdkMcpServer({
-        name: `${role.name}-tools`,
+        name: mcpServerName,
         version: "1.0.0",
         tools: role.tools,
       });
@@ -75,15 +108,17 @@ export async function invokeAgent(
             "running tests, and any task that requires reading/writing files or executing commands.",
           prompt:
             "You are an autonomous dev agent. Implement tasks fully. " +
-            "Do not ask questions — make reasonable decisions and proceed.\n\n" +
-            "## Key Practices\n" +
-            "- TDD: Write a failing test first, then minimal code to pass, then refactor. Never skip the red-green cycle.\n" +
-            "- Debugging: Find root cause before fixing. Read errors carefully. Trace data flow. One fix at a time.\n" +
-            "- Verification: Run tests/build BEFORE claiming done. Evidence before assertions.\n" +
-            "- Commits: Small, focused, conventional commit messages (feat:, fix:, refactor:, etc.).\n" +
-            "- No debug logs, commented-out code, or unrelated changes.\n" +
-            "- Keep it simple: YAGNI, DRY, no over-engineering.",
+            "Do not ask questions — make reasonable decisions and proceed.",
           model: role.devAgentModel ?? "opus",
+          tools: role.devAgentTools,
+          maxTurns: role.devAgentMaxTurns,
+          mcpServers: [mcpServerName],
+          criticalSystemReminder_EXPERIMENTAL:
+            "ALWAYS run tests/build before claiming done — evidence before assertions. " +
+            "Use TDD: write failing test, minimal code to pass, refactor. " +
+            "Conventional commits (feat:, fix:, refactor:). " +
+            "No debug logs, commented-out code, or unrelated changes. " +
+            "YAGNI, DRY, keep it simple.",
         };
       }
 
@@ -96,9 +131,18 @@ export async function invokeAgent(
           allowDangerouslySkipPermissions: true,
           maxTurns: role.maxTurns,
           systemPrompt: role.systemPrompt,
+          settingSources: ["project"],
+          effort: role.effort ?? "high",
+          maxBudgetUsd: role.maxBudgetUsd,
+          fallbackModel: role.fallbackModel,
+          disallowedTools: role.disallowedTools,
+          hooks: {
+            PostToolUse: [{ matcher: "^mcp__", hooks: [mcpAuditHook] }],
+            SubagentStop: [{ hooks: [subagentStopHook] }],
+          },
           stderr: (data: string) => process.stderr.write(data),
           mcpServers: {
-            [`${role.name}-tools`]: toolServer,
+            [mcpServerName]: toolServer,
           },
           agents,
         },
@@ -109,6 +153,9 @@ export async function invokeAgent(
           console.log(formatMessage(message));
           if (message.type === "result") {
             const msg = message as any;
+            costUsd = msg.total_cost_usd ?? 0;
+            numTurns = msg.num_turns ?? 0;
+            durationMs = msg.duration_ms ?? 0;
             if (msg.subtype === "success") {
               resultText = msg.result;
             } else {
@@ -121,8 +168,6 @@ export async function invokeAgent(
           }
         }
       } catch (err) {
-        // The SDK throws if the Claude Code process exits with non-zero,
-        // even after sending a success result. If we already got a result, use it.
         if (resultText) {
           console.warn(
             `[sdk] Process exited with error after success result, ignoring:`,
@@ -133,7 +178,12 @@ export async function invokeAgent(
         }
       }
 
-      return resultText || "No response";
+      return {
+        text: resultText || "No response",
+        costUsd,
+        numTurns,
+        durationMs,
+      };
     },
   );
 }

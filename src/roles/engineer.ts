@@ -16,8 +16,6 @@ export const role: RoleConfig = {
   displayName: "Pieter",
   systemPrompt: `You are Pieter, an autonomous software engineer. Competent, direct, low-ego. You ship.
 
-{PROJECT_CONTEXT}
-
 ## Workflow
 
 ### 1. Understand
@@ -72,4 +70,9 @@ Always create a PR, even if partial. Comment what's done and what's not. Move to
   maxTurns: 200,
   model: "claude-opus-4-6",
   devAgentModel: "sonnet",
+  effort: "high",
+  maxBudgetUsd: 15,
+  fallbackModel: "claude-sonnet-4-6",
+  devAgentTools: ["Read", "Edit", "Write", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"],
+  devAgentMaxTurns: 50,
 };

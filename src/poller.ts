@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import type { RoleConfig } from "./roles/index.js";
 import { queryIssues, moveIssue } from "./tools/linear.js";
-import { invokeAgent } from "./agent.js";
+import { invokeAgent, type AgentResult } from "./agent.js";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 2 * 60 * 1000;
 
@@ -81,9 +81,25 @@ Issue identifier: ${issue.identifier}`;
 
     console.log(`[${role.displayName}] Starting work on ${issue.identifier}`);
     const result = await invokeAgent(prompt, role);
+
+    // Log cost to console
+    const durationStr = `${Math.round(result.durationMs / 1000)}s`;
     console.log(
-      `[${role.displayName}] Completed ${issue.identifier}: ${result.slice(0, 200)}`,
+      `[${role.displayName}] Completed ${issue.identifier}: ${result.numTurns} turns, $${result.costUsd.toFixed(2)}, ${durationStr}`,
     );
+
+    // Post cost summary as Linear comment
+    try {
+      const { LinearClient } = await import("@linear/sdk");
+      const client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY! });
+      const minutes = Math.round(result.durationMs / 60_000);
+      await client.createComment({
+        issueId: issue.id,
+        body: `**${role.displayName} completed** — ${result.numTurns} turns, $${result.costUsd.toFixed(2)}, ${minutes}m`,
+      });
+    } catch {
+      // Best effort
+    }
 
     // Try to move to done state (unless the agent manages its own transitions)
     if (role.autoMoveToDone !== false) {

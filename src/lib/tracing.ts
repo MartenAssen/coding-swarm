@@ -28,12 +28,12 @@ export function initTracing() {
   console.log("LangFuse tracing initialized (OTel SDK)");
 }
 
-export async function traceAgent(
+export async function traceAgent<T>(
   name: string,
   input: string,
   metadata: Record<string, unknown> | undefined,
-  fn: () => Promise<string>,
-): Promise<string> {
+  fn: () => Promise<T>,
+): Promise<T> {
   if (!sdk) return fn();
 
   return startActiveObservation(name, async (span) => {

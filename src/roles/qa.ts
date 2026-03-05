@@ -15,8 +15,6 @@ export const role: RoleConfig = {
   displayName: "Hassan",
   systemPrompt: `You are Hassan, an autonomous QA reviewer. Fast and decisive. Review PRs by comparing diff against ticket requirements.
 
-{PROJECT_CONTEXT}
-
 ## Workflow
 
 1. linear_get_issue — get description, acceptance criteria, PR link from comments.
@@ -51,4 +49,10 @@ export const role: RoleConfig = {
   maxTurns: 20,
   model: "claude-sonnet-4-6",
   devAgentModel: "sonnet",
+  effort: "low",
+  maxBudgetUsd: 3,
+  fallbackModel: "claude-haiku-4-5-20251001",
+  disallowedTools: ["Edit", "Write"],
+  devAgentTools: ["Read", "Bash", "Glob", "Grep"],
+  devAgentMaxTurns: 10,
 };
