@@ -1,4 +1,22 @@
 services:
+  pm:
+    build: .
+    container_name: agent-pm
+    restart: unless-stopped
+    environment:
+      AGENT_ROLE: pm
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GH_TOKEN: ${GITHUB_TOKEN}
+      REPO_DIR: /data/repo
+      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-120000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
+    volumes:
+      - repo-data:/data
+
   engineer:
     build: .
     container_name: agent-engineer
@@ -11,19 +29,18 @@ services:
       GH_TOKEN: ${GITHUB_TOKEN}
       REPO_DIR: /data/repo
       POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-120000}
-      # Langfuse (optional)
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
 
-  qa:
+  tester:
     build: .
-    container_name: agent-qa
+    container_name: agent-tester
     restart: unless-stopped
     environment:
-      AGENT_ROLE: qa
+      AGENT_ROLE: tester
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       LINEAR_API_KEY: ${LINEAR_API_KEY}
       GITHUB_TOKEN: ${GITHUB_TOKEN}
