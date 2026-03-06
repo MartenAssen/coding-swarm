@@ -4,12 +4,14 @@ import { queryIssues, moveIssue } from "./tools/linear.js";
 import { invokeAgent, type AgentResult } from "./agent.js";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 2 * 60 * 1000;
+const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT) || 1;
 
 /** Issues currently being worked on — prevents double-pickup */
 const activeIssues = new Set<string>();
 
 async function poll(role: RoleConfig) {
   try {
+    // queryIssues already returns results sorted by priority (urgent first)
     const issues = await queryIssues(role.pollerFilter);
 
     for (const issue of issues) {
@@ -28,8 +30,16 @@ async function poll(role: RoleConfig) {
         continue;
       }
 
+      // Respect concurrency limit
+      if (activeIssues.size >= MAX_CONCURRENT) {
+        console.log(
+          `[${role.displayName}] At concurrency limit (${MAX_CONCURRENT}), deferring ${issue.identifier} (priority ${issue.priority})`,
+        );
+        break; // Issues are sorted by priority, so remaining ones are lower priority
+      }
+
       console.log(
-        `[${role.displayName}] Picking up ${issue.identifier}: ${issue.title} (state: ${issue.stateName})`,
+        `[${role.displayName}] Picking up ${issue.identifier}: ${issue.title} (priority: ${issue.priority}, state: ${issue.stateName})`,
       );
       activeIssues.add(issue.id);
 
@@ -54,7 +64,7 @@ async function poll(role: RoleConfig) {
 
 async function processIssue(
   role: RoleConfig,
-  issue: { id: string; identifier: string; title: string; stateName: string; labels: string[] },
+  issue: { id: string; identifier: string; title: string; stateName: string; labels: string[]; priority: number },
 ) {
   const prompt = `You have been assigned Linear issue ${issue.identifier}: "${issue.title}".
 
@@ -138,7 +148,7 @@ export function startPoller(role: RoleConfig) {
     ? role.pollerFilter.stateName.join("' or '")
     : role.pollerFilter.stateName;
   console.log(
-    `[${role.displayName}] Starting poller — checking for '${stateNames}'${role.pollerFilter.label ? ` with label '${role.pollerFilter.label}'` : ""} every ${POLL_INTERVAL_MS / 1000}s`,
+    `[${role.displayName}] Starting poller — checking for '${stateNames}'${role.pollerFilter.label ? ` with label '${role.pollerFilter.label}'` : ""} every ${POLL_INTERVAL_MS / 1000}s (max concurrent: ${MAX_CONCURRENT})`,
   );
 
   // Initial poll immediately

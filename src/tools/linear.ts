@@ -169,7 +169,7 @@ export const linearCreateIssue = tool(
 export async function queryIssues(filter: {
   label?: string;
   stateName: string | string[];
-}): Promise<Array<{ id: string; identifier: string; title: string; stateName: string; labels: string[] }>> {
+}): Promise<Array<{ id: string; identifier: string; title: string; stateName: string; labels: string[]; priority: number }>> {
   const client = getClient();
 
   const stateNames = Array.isArray(filter.stateName) ? filter.stateName : [filter.stateName];
@@ -188,7 +188,7 @@ export async function queryIssues(filter: {
     },
   });
 
-  const results: Array<{ id: string; identifier: string; title: string; stateName: string; labels: string[] }> = [];
+  const results: Array<{ id: string; identifier: string; title: string; stateName: string; labels: string[]; priority: number }> = [];
   for (const i of issues.nodes) {
     const state = await i.state;
     const issueLabels = await i.labels();
@@ -198,8 +198,11 @@ export async function queryIssues(filter: {
       title: i.title,
       stateName: state?.name ?? "Unknown",
       labels: issueLabels.nodes.map((l) => l.name.toLowerCase()),
+      priority: i.priority,
     });
   }
+  // Sort by priority: 1=urgent, 2=high, 3=medium, 4=low, 0=none (treat 0 as lowest)
+  results.sort((a, b) => (a.priority || 5) - (b.priority || 5));
   return results;
 }
 

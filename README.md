@@ -82,6 +82,7 @@ AGENT_ROLE=engineer                # Which agent to run: pm, engineer, tester
 # Optional
 REPO_DIR=/data/repo               # Where to clone the repo (default: /data/repo)
 POLL_INTERVAL_MS=120000           # Poll interval in ms (default: 2 minutes)
+MAX_CONCURRENT=1                  # Max concurrent issues per agent (default: 1)
 LANGFUSE_PUBLIC_KEY=...           # Langfuse tracing (optional)
 LANGFUSE_SECRET_KEY=...
 LANGFUSE_BASE_URL=...
