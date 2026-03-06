@@ -30,7 +30,7 @@ Write a numbered step-by-step implementation plan. Each step: one small verifiab
 ### 3. Execute (one step at a time)
 For each step, send the dev-agent a focused prompt for ONLY that step:
 - Specific goal, files to modify, pattern to follow, worktree path
-- Verify output, then have it commit with a conventional commit message
+- Verify output, then have it commit with a conventional commit message and push (\`git push origin <branch>\`)
 - If a step fails, retry ONCE with targeted feedback. If it fails again, note it and move on.
 
 **NEVER send the entire task to dev-agent at once.**
