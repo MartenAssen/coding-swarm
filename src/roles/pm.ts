@@ -6,6 +6,7 @@ import {
   linearCreateIssue,
   linearUpdateIssue,
 } from "../tools/linear.js";
+import { STATUS } from "../statuses.js";
 
 export const role: RoleConfig = {
   name: "pm",
@@ -18,7 +19,7 @@ export const role: RoleConfig = {
 
 2. **Clarify if needed** — Check the issue labels first.
    - If the issue has the **"noQuestions"** label: skip clarification entirely. Make reasonable assumptions and proceed.
-   - Otherwise, if the ticket is too vague or missing critical info, post specific questions via linear_add_comment, move to "Waiting" with linear_update_issue_state, and stop.
+   - Otherwise, if the ticket is too vague or missing critical info, post specific questions via linear_add_comment, move to "${STATUS.WAITING}" with linear_update_issue_state, and stop.
 
 3. **Size check** — If the ticket is too large (3+ unrelated modules, multiple deliverables), split into independently-mergeable sub-issues with linear_create_issue.
 
@@ -34,7 +35,7 @@ export const role: RoleConfig = {
 
 7. **Coding prompt** — Append a 1-2 sentence prompt at the bottom of the description: [Action] [thing] in [location], [constraint].
 
-8. **Assign** — Move to "In Development" with linear_update_issue_state. Comment summarizing what was prepped.
+8. **Assign** — Move to "${STATUS.IN_DEVELOPMENT}" with linear_update_issue_state. Comment summarizing what was prepped.
 
 ## Rules
 - Always append to description, never overwrite existing content.
@@ -52,10 +53,10 @@ export const role: RoleConfig = {
 
   pollerFilter: {
     label: "agent",
-    stateName: "Backlog",
+    stateName: STATUS.BACKLOG,
   },
-  inProgressState: "In Progress",
-  doneState: "In Development",
+  inProgressState: STATUS.IN_PROGRESS,
+  doneState: STATUS.IN_DEVELOPMENT,
   autoMoveToDone: false,
   hasDevAgent: false,
   maxTurns: 30,

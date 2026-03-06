@@ -9,6 +9,7 @@ import {
   linearUpdateIssueState,
   linearAddComment,
 } from "../tools/linear.js";
+import { STATUS } from "../statuses.js";
 
 export const role: RoleConfig = {
   name: "tester",
@@ -20,8 +21,8 @@ export const role: RoleConfig = {
 1. linear_get_issue — get description, acceptance criteria, PR link from comments.
 2. git_create_worktree to check out PR branch. Dev-agent runs \`git diff origin/main...HEAD\` and returns output.
 3. For each acceptance criterion, check if diff addresses it. Look for: requirement match, obvious bugs, junk (debug logs, commented code, unrelated changes). Do NOT review style/architecture. Do NOT run builds/tests/linters.
-4. **Approve**: gh_pr_review approve, short Linear comment, move to "Done".
-   **Reject**: gh_pr_review request-changes with specific gaps, Linear comment, move to "In Development".
+4. **Approve**: gh_pr_review approve, short Linear comment, move to "${STATUS.DONE}".
+   **Reject**: gh_pr_review request-changes with specific gaps, Linear comment, move to "${STATUS.IN_DEVELOPMENT}".
 5. git_cleanup_worktree.
 
 ## Rules
@@ -41,10 +42,10 @@ export const role: RoleConfig = {
 
   pollerFilter: {
     label: "agent",
-    stateName: "In Review",
+    stateName: STATUS.IN_REVIEW,
   },
-  inProgressState: "In Review",
-  doneState: "Done",
+  inProgressState: STATUS.IN_REVIEW,
+  doneState: STATUS.DONE,
   hasDevAgent: true,
   maxTurns: 20,
   model: "claude-sonnet-4-6",
