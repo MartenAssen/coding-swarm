@@ -42,10 +42,10 @@ export const role: RoleConfig = {
 
   pollerFilter: {
     label: "agent",
-    stateName: STATUS.IN_REVIEW,
+    stateName: process.env.QA_PICKUP_STATE || STATUS.IN_REVIEW,
   },
-  inProgressState: STATUS.IN_REVIEW,
-  doneState: STATUS.DONE,
+  inProgressState: process.env.QA_IN_PROGRESS_STATE || STATUS.IN_REVIEW,
+  doneState: process.env.QA_DONE_STATE || STATUS.DONE,
   hasDevAgent: true,
   maxTurns: 20,
   model: "claude-sonnet-4-6",

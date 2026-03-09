@@ -63,10 +63,10 @@ Always create a PR, even if partial. Comment what's done and what's not. Move to
 
   pollerFilter: {
     label: "agent",
-    stateName: STATUS.IN_DEVELOPMENT,
+    stateName: process.env.ENGINEER_PICKUP_STATE || STATUS.IN_DEVELOPMENT,
   },
-  inProgressState: STATUS.IN_DEVELOPMENT,
-  doneState: STATUS.IN_REVIEW,
+  inProgressState: process.env.ENGINEER_IN_PROGRESS_STATE || STATUS.IN_DEVELOPMENT,
+  doneState: process.env.ENGINEER_DONE_STATE || STATUS.IN_REVIEW,
   hasDevAgent: true,
   maxTurns: 200,
   model: "claude-opus-4-6",

@@ -81,6 +81,7 @@ const subagentStopHook: HookCallback = async (input, _toolUseID, _ctx) => {
 export async function invokeAgent(
   prompt: string,
   role: RoleConfig,
+  repoContext: { repoDir: string; repo: string },
 ): Promise<AgentResult> {
   return traceAgent(
     `${role.name}-invoke`,
@@ -122,11 +123,17 @@ export async function invokeAgent(
         };
       }
 
+      // Set GITHUB_REPO for this agent session (tools read it from process.env)
+      const prevRepo = process.env.GITHUB_REPO;
+      const prevRepoDir = process.env.REPO_DIR;
+      process.env.GITHUB_REPO = repoContext.repo;
+      process.env.REPO_DIR = repoContext.repoDir;
+
       const session = query({
         prompt,
         options: {
           model: role.model,
-          cwd: process.env.REPO_DIR || "/data/repo",
+          cwd: repoContext.repoDir,
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           maxTurns: role.maxTurns,
@@ -177,6 +184,12 @@ export async function invokeAgent(
           throw err;
         }
       }
+
+      // Restore env
+      if (prevRepo !== undefined) process.env.GITHUB_REPO = prevRepo;
+      else delete process.env.GITHUB_REPO;
+      if (prevRepoDir !== undefined) process.env.REPO_DIR = prevRepoDir;
+      else delete process.env.REPO_DIR;
 
       return {
         text: resultText || "No response",

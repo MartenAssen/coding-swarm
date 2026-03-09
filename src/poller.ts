@@ -2,6 +2,8 @@ import { execSync } from "node:child_process";
 import type { RoleConfig } from "./roles/index.js";
 import { queryIssues, moveIssue } from "./tools/linear.js";
 import { invokeAgent, type AgentResult } from "./agent.js";
+import { getRepoForIssue, getRepoLabels, type RepoConfig } from "./repos.js";
+import { STATUS } from "./statuses.js";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 2 * 60 * 1000;
 const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT) || 1;
@@ -30,6 +32,34 @@ async function poll(role: RoleConfig) {
         continue;
       }
 
+      // Resolve which repo this issue targets
+      const repoConfig = getRepoForIssue(issue.labels);
+      if (!repoConfig) {
+        if (role.name === "pm") {
+          // PM: ask which repo and move to waiting
+          console.log(
+            `[${role.displayName}] No repo label found on ${issue.identifier}, asking for clarification`,
+          );
+          try {
+            const { LinearClient } = await import("@linear/sdk");
+            const client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY! });
+            const knownLabels = getRepoLabels();
+            await client.createComment({
+              issueId: issue.id,
+              body: `This ticket is missing a repo label. Please add one of: ${knownLabels.map((l) => `\`${l}\``).join(", ")}`,
+            });
+            await moveIssue(issue.id, STATUS.WAITING);
+          } catch (err) {
+            console.warn(`[${role.displayName}] Failed to comment/move ${issue.identifier}:`, err);
+          }
+        } else {
+          console.warn(
+            `[${role.displayName}] Skipping ${issue.identifier} — no repo label found`,
+          );
+        }
+        continue;
+      }
+
       // Respect concurrency limit
       if (activeIssues.size >= MAX_CONCURRENT) {
         console.log(
@@ -39,7 +69,7 @@ async function poll(role: RoleConfig) {
       }
 
       console.log(
-        `[${role.displayName}] Picking up ${issue.identifier}: ${issue.title} (priority: ${issue.priority}, state: ${issue.stateName})`,
+        `[${role.displayName}] Picking up ${issue.identifier}: ${issue.title} (repo: ${repoConfig.label}, priority: ${issue.priority}, state: ${issue.stateName})`,
       );
       activeIssues.add(issue.id);
 
@@ -53,7 +83,7 @@ async function poll(role: RoleConfig) {
       }
 
       // Process the issue (don't await — let the poller continue for other issues)
-      processIssue(role, issue).finally(() => {
+      processIssue(role, issue, repoConfig).finally(() => {
         activeIssues.delete(issue.id);
       });
     }
@@ -65,6 +95,7 @@ async function poll(role: RoleConfig) {
 async function processIssue(
   role: RoleConfig,
   issue: { id: string; identifier: string; title: string; stateName: string; labels: string[]; priority: number },
+  repoConfig: RepoConfig,
 ) {
   const prompt = `You have been assigned Linear issue ${issue.identifier}: "${issue.title}".
 
@@ -74,9 +105,9 @@ Issue identifier: ${issue.identifier}`;
 
   try {
     // Ensure the repo is up to date before starting work
-    const repoDir = process.env.REPO_DIR || "/data/repo";
+    const repoDir = repoConfig.repoDir;
     try {
-      console.log(`[${role.displayName}] Syncing repo before starting ${issue.identifier}`);
+      console.log(`[${role.displayName}] Syncing repo ${repoConfig.label} before starting ${issue.identifier}`);
       execSync("git fetch origin && git pull --ff-only", {
         cwd: repoDir,
         stdio: "pipe",
@@ -90,7 +121,7 @@ Issue identifier: ${issue.identifier}`;
     }
 
     console.log(`[${role.displayName}] Starting work on ${issue.identifier}`);
-    const result = await invokeAgent(prompt, role);
+    const result = await invokeAgent(prompt, role, repoConfig);
 
     // Log cost to console
     const durationStr = `${Math.round(result.durationMs / 1000)}s`;
