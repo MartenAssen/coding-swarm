@@ -3,37 +3,91 @@ services:
     build: .
     container_name: agent-pm
     restart: unless-stopped
-    env_file: .env.local
     environment:
       AGENT_ROLE: pm
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_REPO: ${GITHUB_REPO:-}
+      GITHUB_REPOS: ${GITHUB_REPOS:-}
+      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-120000}
+      MAX_CONCURRENT: ${MAX_CONCURRENT:-1}
+      STATUS_BACKLOG: ${STATUS_BACKLOG:-Backlog}
+      STATUS_IN_PROGRESS: ${STATUS_IN_PROGRESS:-In Progress}
+      STATUS_IN_DEVELOPMENT: ${STATUS_IN_DEVELOPMENT:-In Development}
+      STATUS_IN_REVIEW: ${STATUS_IN_REVIEW:-In Review}
+      STATUS_DONE: ${STATUS_DONE:-Done}
+      STATUS_WAITING: ${STATUS_WAITING:-Waiting}
+      LABEL_AGENT: ${LABEL_AGENT:-agent}
+      LABEL_NO_QUESTIONS: ${LABEL_NO_QUESTIONS:-noQuestions}
+      LABEL_SKIP_QA: ${LABEL_SKIP_QA:-skipQA}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
-      - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
 
   engineer:
     build: .
     container_name: agent-engineer
     restart: unless-stopped
-    env_file: .env.local
     environment:
       AGENT_ROLE: engineer
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_REPO: ${GITHUB_REPO:-}
+      GITHUB_REPOS: ${GITHUB_REPOS:-}
+      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-120000}
+      MAX_CONCURRENT: ${MAX_CONCURRENT:-1}
+      STATUS_BACKLOG: ${STATUS_BACKLOG:-Backlog}
+      STATUS_IN_PROGRESS: ${STATUS_IN_PROGRESS:-In Progress}
+      STATUS_IN_DEVELOPMENT: ${STATUS_IN_DEVELOPMENT:-In Development}
+      STATUS_IN_REVIEW: ${STATUS_IN_REVIEW:-In Review}
+      STATUS_DONE: ${STATUS_DONE:-Done}
+      STATUS_WAITING: ${STATUS_WAITING:-Waiting}
+      LABEL_AGENT: ${LABEL_AGENT:-agent}
+      LABEL_NO_QUESTIONS: ${LABEL_NO_QUESTIONS:-noQuestions}
+      LABEL_SKIP_QA: ${LABEL_SKIP_QA:-skipQA}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
-      - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
 
   tester:
     build: .
     container_name: agent-tester
     restart: unless-stopped
-    env_file: .env.local
     environment:
       AGENT_ROLE: tester
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_REPO: ${GITHUB_REPO:-}
+      GITHUB_REPOS: ${GITHUB_REPOS:-}
+      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-120000}
+      MAX_CONCURRENT: ${MAX_CONCURRENT:-1}
+      STATUS_BACKLOG: ${STATUS_BACKLOG:-Backlog}
+      STATUS_IN_PROGRESS: ${STATUS_IN_PROGRESS:-In Progress}
+      STATUS_IN_DEVELOPMENT: ${STATUS_IN_DEVELOPMENT:-In Development}
+      STATUS_IN_REVIEW: ${STATUS_IN_REVIEW:-In Review}
+      STATUS_DONE: ${STATUS_DONE:-Done}
+      STATUS_WAITING: ${STATUS_WAITING:-Waiting}
+      LABEL_AGENT: ${LABEL_AGENT:-agent}
+      LABEL_NO_QUESTIONS: ${LABEL_NO_QUESTIONS:-noQuestions}
+      LABEL_SKIP_QA: ${LABEL_SKIP_QA:-skipQA}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
-      - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
 
 volumes:
   repo-data:
