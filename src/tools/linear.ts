@@ -8,8 +8,15 @@ function getClient(): LinearClient {
   return new LinearClient({ apiKey });
 }
 
-const IMAGE_URL_RE = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i;
 const MARKDOWN_IMAGE_RE = /!\[[^\]]*\]\(([^)]+)\)/g;
+
+const MIME_MAP: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+};
 
 /** Extract image URLs from markdown text (![alt](url) syntax) */
 export function extractInlineImages(text: string): string[] {
@@ -18,6 +25,30 @@ export function extractInlineImages(text: string): string[] {
     urls.push(match[1]);
   }
   return urls;
+}
+
+/** Guess MIME type from URL, or from Content-Type header */
+function guessMime(url: string, contentType?: string): string | null {
+  if (contentType) {
+    const ct = contentType.split(";")[0].trim().toLowerCase();
+    if (ct.startsWith("image/")) return ct;
+  }
+  const ext = url.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
+  return MIME_MAP[ext] ?? null;
+}
+
+/** Fetch an image URL and return base64 + mimeType, or null on failure */
+async function fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return null;
+    const mime = guessMime(url, res.headers.get("content-type") ?? undefined);
+    if (!mime || !mime.startsWith("image/")) return null;
+    const buffer = await res.arrayBuffer();
+    return { data: Buffer.from(buffer).toString("base64"), mimeType: mime };
+  } catch {
+    return null;
+  }
 }
 
 /** Exported for testing */
@@ -57,7 +88,7 @@ export async function getIssueDetails(client: LinearClient, issueId: string) {
     const imageUrls = new Set<string>();
 
     for (const a of attachments.nodes) {
-      if (IMAGE_URL_RE.test(a.url)) imageUrls.add(a.url);
+      if (guessMime(a.url)) imageUrls.add(a.url);
     }
 
     for (const url of extractInlineImages(issue.description ?? "")) {
@@ -69,16 +100,24 @@ export async function getIssueDetails(client: LinearClient, issueId: string) {
       }
     }
 
-    // Return text content + all discovered images as image blocks
-    const content: Array<{ type: "text"; text: string } | { type: "image"; source: { type: "url"; url: string } }> = [
-      { type: "text", text },
+    // Fetch images in parallel and convert to base64
+    const imageResults = await Promise.all(
+      [...imageUrls].map((url) => fetchImageAsBase64(url)),
+    );
+
+    // Return text content + fetched images as base64 image blocks
+    const content: Array<{ type: "text"; text: string } | { type: "image"; data: string; mimeType: string }> = [
+      { type: "text" as const, text },
     ];
 
-    for (const url of imageUrls) {
-      content.push({
-        type: "image",
-        source: { type: "url", url },
-      });
+    for (const img of imageResults) {
+      if (img) {
+        content.push({
+          type: "image" as const,
+          data: img.data,
+          mimeType: img.mimeType,
+        });
+      }
     }
 
     return { content };

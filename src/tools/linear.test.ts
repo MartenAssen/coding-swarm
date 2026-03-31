@@ -1,5 +1,25 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getIssueDetails, extractInlineImages } from "./linear.js";
+
+// Mock global fetch to return fake image data for image URLs
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    const ext = url.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
+    const mimeMap: Record<string, string> = {
+      png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+      gif: "image/gif", webp: "image/webp",
+    };
+    const mime = mimeMap[ext];
+    if (!mime) {
+      return { ok: false } as Response;
+    }
+    return {
+      ok: true,
+      headers: new Headers({ "content-type": mime }),
+      arrayBuffer: async () => new ArrayBuffer(8),
+    } as unknown as Response;
+  }));
+});
 
 function mockClient(overrides: {
   description?: string;
@@ -34,26 +54,26 @@ describe("getIssueDetails", () => {
     });
 
     const result = await getIssueDetails(client, "PFX-42");
-    const text = result.content[0].text;
+    const textBlock = result.content.find((b: any) => b.type === "text") as any;
 
-    expect(text).toContain("## Attachments");
-    expect(text).toContain("[Design doc](https://example.com/doc.pdf) — v2");
+    expect(textBlock.text).toContain("## Attachments");
+    expect(textBlock.text).toContain("[Design doc](https://example.com/doc.pdf) — v2");
   });
 
   it("omits attachments section when there are none", async () => {
     const client = mockClient({ attachments: [] });
 
     const result = await getIssueDetails(client, "PFX-42");
-    const text = result.content[0].text;
+    const textBlock = result.content.find((b: any) => b.type === "text") as any;
 
-    expect(text).not.toContain("## Attachments");
+    expect(textBlock.text).not.toContain("## Attachments");
   });
 
-  it("returns image blocks for image attachments", async () => {
+  it("returns base64 image blocks for image attachments", async () => {
     const client = mockClient({
       attachments: [
         { title: "Screenshot", url: "https://cdn.linear.app/screenshot.png" },
-        { title: "Photo", url: "https://cdn.linear.app/photo.JPG" },
+        { title: "Photo", url: "https://cdn.linear.app/photo.jpg" },
         { title: "Doc", url: "https://example.com/doc.pdf" },
       ],
     });
@@ -62,8 +82,9 @@ describe("getIssueDetails", () => {
     const images = result.content.filter((b: any) => b.type === "image");
 
     expect(images).toHaveLength(2);
-    expect(images[0].source.url).toBe("https://cdn.linear.app/screenshot.png");
-    expect(images[1].source.url).toBe("https://cdn.linear.app/photo.JPG");
+    expect((images[0] as any).mimeType).toBe("image/png");
+    expect((images[0] as any).data).toBeDefined();
+    expect((images[1] as any).mimeType).toBe("image/jpeg");
   });
 
   it("handles image URLs with query parameters", async () => {
@@ -77,6 +98,7 @@ describe("getIssueDetails", () => {
     const images = result.content.filter((b: any) => b.type === "image");
 
     expect(images).toHaveLength(1);
+    expect((images[0] as any).mimeType).toBe("image/webp");
   });
 
   it("does not return image blocks for non-image files", async () => {
@@ -102,11 +124,11 @@ describe("getIssueDetails", () => {
     });
 
     const result = await getIssueDetails(client, "PFX-42");
-    const text = result.content[0].text;
+    const textBlock = result.content.find((b: any) => b.type === "text") as any;
 
-    expect(text).toContain("[With sub](https://example.com/a) — details");
-    expect(text).toContain("[No sub](https://example.com/b)");
-    expect(text).not.toContain("No sub](https://example.com/b) —");
+    expect(textBlock.text).toContain("[With sub](https://example.com/a) — details");
+    expect(textBlock.text).toContain("[No sub](https://example.com/b)");
+    expect(textBlock.text).not.toContain("No sub](https://example.com/b) —");
   });
 });
 
@@ -131,7 +153,7 @@ describe("extractInlineImages", () => {
 });
 
 describe("getIssueDetails inline images", () => {
-  it("returns image blocks for images in description", async () => {
+  it("returns base64 image blocks for images in description", async () => {
     const client = mockClient({
       description: "Bug here:\n![screenshot](https://uploads.linear.app/abc/img.png)\nSee above",
     });
@@ -140,10 +162,11 @@ describe("getIssueDetails inline images", () => {
     const images = result.content.filter((b: any) => b.type === "image");
 
     expect(images).toHaveLength(1);
-    expect(images[0].source.url).toBe("https://uploads.linear.app/abc/img.png");
+    expect((images[0] as any).mimeType).toBe("image/png");
+    expect((images[0] as any).data).toBeDefined();
   });
 
-  it("returns image blocks for images in comments", async () => {
+  it("returns base64 image blocks for images in comments", async () => {
     const client = mockClient({
       comments: [
         { createdAt: new Date(), body: "Look at this ![error](https://uploads.linear.app/error.jpg)" },
@@ -154,7 +177,7 @@ describe("getIssueDetails inline images", () => {
     const images = result.content.filter((b: any) => b.type === "image");
 
     expect(images).toHaveLength(1);
-    expect(images[0].source.url).toBe("https://uploads.linear.app/error.jpg");
+    expect((images[0] as any).mimeType).toBe("image/jpeg");
   });
 
   it("deduplicates images across description, comments, and attachments", async () => {
@@ -190,5 +213,26 @@ describe("getIssueDetails inline images", () => {
     const images = result.content.filter((b: any) => b.type === "image");
 
     expect(images).toHaveLength(3);
+  });
+
+  it("skips images that fail to fetch", async () => {
+    // Override fetch to fail for one URL
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("broken")) return { ok: false } as Response;
+      return {
+        ok: true,
+        headers: new Headers({ "content-type": "image/png" }),
+        arrayBuffer: async () => new ArrayBuffer(8),
+      } as unknown as Response;
+    }));
+
+    const client = mockClient({
+      description: "![ok](https://uploads.linear.app/ok.png) ![broken](https://uploads.linear.app/broken.png)",
+    });
+
+    const result = await getIssueDetails(client, "PFX-42");
+    const images = result.content.filter((b: any) => b.type === "image");
+
+    expect(images).toHaveLength(1);
   });
 });
