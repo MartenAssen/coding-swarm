@@ -8,23 +8,35 @@ function getClient(): LinearClient {
   return new LinearClient({ apiKey });
 }
 
-export const linearGetIssue = tool(
-  "linear_get_issue",
-  "Get details of a Linear issue by ID or identifier (e.g. 'ENG-123').",
-  {
-    issueId: z.string().describe("Issue ID (UUID) or identifier (e.g. ENG-123)"),
-  },
-  async ({ issueId }) => {
-    const client = getClient();
+const IMAGE_URL_RE = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i;
+const MARKDOWN_IMAGE_RE = /!\[[^\]]*\]\(([^)]+)\)/g;
+
+/** Extract image URLs from markdown text (![alt](url) syntax) */
+export function extractInlineImages(text: string): string[] {
+  const urls: string[] = [];
+  for (const match of text.matchAll(MARKDOWN_IMAGE_RE)) {
+    urls.push(match[1]);
+  }
+  return urls;
+}
+
+/** Exported for testing */
+export async function getIssueDetails(client: LinearClient, issueId: string) {
     const issue = await client.issue(issueId);
     const state = await issue.state;
     const labels = await issue.labels();
     const comments = await issue.comments();
     const assignee = await issue.assignee;
 
+    const attachments = await issue.attachments();
+
     const commentTexts = comments.nodes
       .map((c) => `[${c.createdAt.toISOString()}] ${c.body}`)
       .join("\n\n");
+
+    const attachmentTexts = attachments.nodes
+      .map((a) => `- [${a.title}](${a.url})${a.subtitle ? ` — ${a.subtitle}` : ""}`)
+      .join("\n");
 
     const text = [
       `**${issue.identifier}: ${issue.title}**`,
@@ -38,10 +50,47 @@ export const linearGetIssue = tool(
       issue.description ?? "(no description)",
       "",
       comments.nodes.length > 0 ? `## Comments\n${commentTexts}` : "",
+      attachments.nodes.length > 0 ? `## Attachments\n${attachmentTexts}` : "",
     ].join("\n");
 
-    return { content: [{ type: "text" as const, text }] };
+    // Collect all image URLs: from attachments, description, and comments
+    const imageUrls = new Set<string>();
+
+    for (const a of attachments.nodes) {
+      if (IMAGE_URL_RE.test(a.url)) imageUrls.add(a.url);
+    }
+
+    for (const url of extractInlineImages(issue.description ?? "")) {
+      imageUrls.add(url);
+    }
+    for (const c of comments.nodes) {
+      for (const url of extractInlineImages(c.body ?? "")) {
+        imageUrls.add(url);
+      }
+    }
+
+    // Return text content + all discovered images as image blocks
+    const content: Array<{ type: "text"; text: string } | { type: "image"; source: { type: "url"; url: string } }> = [
+      { type: "text", text },
+    ];
+
+    for (const url of imageUrls) {
+      content.push({
+        type: "image",
+        source: { type: "url", url },
+      });
+    }
+
+    return { content };
+}
+
+export const linearGetIssue = tool(
+  "linear_get_issue",
+  "Get details of a Linear issue by ID or identifier (e.g. 'ENG-123').",
+  {
+    issueId: z.string().describe("Issue ID (UUID) or identifier (e.g. ENG-123)"),
   },
+  async ({ issueId }) => getIssueDetails(getClient(), issueId),
 );
 
 export const linearUpdateIssueState = tool(
