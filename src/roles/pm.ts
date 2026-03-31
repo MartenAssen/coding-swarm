@@ -64,9 +64,9 @@ export const role: RoleConfig = {
   autoMoveToDone: false,
   hasDevAgent: false,
   maxTurns: 30,
-  model: "claude-haiku-4-5-20251001",
+  model: "claude-sonnet-4-6",
   effort: "medium",
   maxBudgetUsd: 2,
-  fallbackModel: "claude-sonnet-4-6",
+  fallbackModel: "claude-haiku-4-5-20251001",
   disallowedTools: ["Edit", "Write", "Bash"],
 };

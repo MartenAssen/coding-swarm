@@ -39,7 +39,7 @@ For each step, send the dev-agent a focused prompt for ONLY that step:
 
 ### 4. Verify & Ship
 - Dev-agent runs build/tests in the worktree. Fix failures one step at a time.
-- Push with git_push_branch, create PR with gh_create_pr (reference Linear issue, list completed steps).
+- Push with git_push_branch, create PR with gh_create_pr (reference Linear issue, list completed steps). Add a label: "bug" for bug fixes, "feature" for new features.
 - Post PR link on Linear with linear_add_comment. Move ticket to "${doneState}" with linear_update_issue_state.
 - Clean up with git_cleanup_worktree.
 
@@ -67,15 +67,25 @@ Always create a PR, even if partial. Comment what's done and what's not. Move to
     label: "agent",
     stateName: process.env.ENGINEER_PICKUP_STATE || STATUS.IN_DEVELOPMENT,
   },
-  inProgressState: process.env.ENGINEER_IN_PROGRESS_STATE || STATUS.IN_DEVELOPMENT,
+  inProgressState:
+    process.env.ENGINEER_IN_PROGRESS_STATE || STATUS.IN_DEVELOPMENT,
   doneState: process.env.ENGINEER_DONE_STATE || STATUS.IN_REVIEW,
   hasDevAgent: true,
   maxTurns: 200,
   model: "claude-opus-4-6",
-  devAgentModel: "sonnet",
+  devAgentModel: "claude-sonnet-4-6",
   effort: "high",
   maxBudgetUsd: 15,
   fallbackModel: "claude-sonnet-4-6",
-  devAgentTools: ["Read", "Edit", "Write", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"],
+  devAgentTools: [
+    "Read",
+    "Edit",
+    "Write",
+    "Bash",
+    "Glob",
+    "Grep",
+    "WebSearch",
+    "WebFetch",
+  ],
   devAgentMaxTurns: 50,
 };

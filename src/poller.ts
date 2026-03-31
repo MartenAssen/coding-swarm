@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
 import type { RoleConfig } from "./roles/index.js";
 import { queryIssues, moveIssue } from "./tools/linear.js";
 import { invokeAgent, type AgentResult } from "./agent.js";
@@ -27,7 +28,9 @@ async function poll(role: RoleConfig) {
         try {
           await moveIssue(issue.id, role.doneState);
         } catch {
-          console.warn(`[${role.displayName}] Could not auto-advance ${issue.identifier}`);
+          console.warn(
+            `[${role.displayName}] Could not auto-advance ${issue.identifier}`,
+          );
         }
         continue;
       }
@@ -42,7 +45,9 @@ async function poll(role: RoleConfig) {
           );
           try {
             const { LinearClient } = await import("@linear/sdk");
-            const client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY! });
+            const client = new LinearClient({
+              apiKey: process.env.LINEAR_API_KEY!,
+            });
             const knownLabels = getRepoLabels();
             await client.createComment({
               issueId: issue.id,
@@ -50,7 +55,10 @@ async function poll(role: RoleConfig) {
             });
             await moveIssue(issue.id, STATUS.WAITING);
           } catch (err) {
-            console.warn(`[${role.displayName}] Failed to comment/move ${issue.identifier}:`, err);
+            console.warn(
+              `[${role.displayName}] Failed to comment/move ${issue.identifier}:`,
+              err,
+            );
           }
         } else {
           console.warn(
@@ -94,7 +102,14 @@ async function poll(role: RoleConfig) {
 
 async function processIssue(
   role: RoleConfig,
-  issue: { id: string; identifier: string; title: string; stateName: string; labels: string[]; priority: number },
+  issue: {
+    id: string;
+    identifier: string;
+    title: string;
+    stateName: string;
+    labels: string[];
+    priority: number;
+  },
   repoConfig: RepoConfig,
 ) {
   const prompt = `You have been assigned Linear issue ${issue.identifier}: "${issue.title}".
@@ -103,25 +118,67 @@ Fetch the full issue details using linear_get_issue, then follow your workflow t
 
 Issue identifier: ${issue.identifier}`;
 
+  const baseRepoDir = repoConfig.repoDir;
+  const worktreeDir = `${baseRepoDir}-worktrees/${issue.identifier}`;
+
   try {
-    // Ensure the repo is up to date before starting work
-    const repoDir = repoConfig.repoDir;
+    // Fetch latest and create an isolated worktree for this task
+    console.log(
+      `[${role.displayName}] Creating isolated worktree for ${issue.identifier}`,
+    );
     try {
-      console.log(`[${role.displayName}] Syncing repo ${repoConfig.label} before starting ${issue.identifier}`);
-      execSync("git fetch origin && git pull --ff-only", {
-        cwd: repoDir,
+      execSync("git fetch origin", {
+        cwd: baseRepoDir,
         stdio: "pipe",
         timeout: 30_000,
       });
+      const defaultBranch =
+        execSync(
+          "git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'",
+          { cwd: baseRepoDir, stdio: "pipe", timeout: 10_000 },
+        )
+          .toString()
+          .trim() || "main";
+
+      // Clean up stale worktree if it exists (e.g. from a previous crash)
+      if (existsSync(worktreeDir)) {
+        console.warn(
+          `[${role.displayName}] Removing stale worktree at ${worktreeDir}`,
+        );
+        try {
+          execSync(`git worktree remove "${worktreeDir}" --force`, {
+            cwd: baseRepoDir,
+            stdio: "pipe",
+            timeout: 10_000,
+          });
+        } catch {
+          rmSync(worktreeDir, { recursive: true, force: true });
+          execSync("git worktree prune", {
+            cwd: baseRepoDir,
+            stdio: "pipe",
+            timeout: 10_000,
+          });
+        }
+      }
+
+      execSync(
+        `git worktree add "${worktreeDir}" "origin/${defaultBranch}" --detach`,
+        { cwd: baseRepoDir, stdio: "pipe", timeout: 30_000 },
+      );
     } catch (err) {
       console.warn(
-        `[${role.displayName}] Git sync failed (continuing anyway):`,
+        `[${role.displayName}] Worktree creation failed (continuing in shared dir):`,
         err instanceof Error ? err.message : String(err),
       );
     }
 
-    console.log(`[${role.displayName}] Starting work on ${issue.identifier}`);
-    const result = await invokeAgent(prompt, role, repoConfig);
+    const taskRepoDir = existsSync(worktreeDir) ? worktreeDir : baseRepoDir;
+    const taskRepoConfig = { ...repoConfig, repoDir: taskRepoDir };
+
+    console.log(
+      `[${role.displayName}] Starting work on ${issue.identifier} in ${taskRepoDir}`,
+    );
+    const result = await invokeAgent(prompt, role, taskRepoConfig);
 
     // Log cost to console
     const durationStr = `${Math.round(result.durationMs / 1000)}s`;
@@ -170,6 +227,35 @@ Issue identifier: ${issue.identifier}`;
       });
     } catch {
       // Best effort
+    }
+  } finally {
+    // Clean up the task worktree
+    if (existsSync(worktreeDir)) {
+      try {
+        console.log(
+          `[${role.displayName}] Cleaning up worktree for ${issue.identifier}`,
+        );
+        execSync(`git worktree remove "${worktreeDir}" --force`, {
+          cwd: baseRepoDir,
+          stdio: "pipe",
+          timeout: 10_000,
+        });
+      } catch (err) {
+        console.warn(
+          `[${role.displayName}] Worktree cleanup failed (removing manually):`,
+          err instanceof Error ? err.message : String(err),
+        );
+        try {
+          rmSync(worktreeDir, { recursive: true, force: true });
+          execSync("git worktree prune", {
+            cwd: baseRepoDir,
+            stdio: "pipe",
+            timeout: 10_000,
+          });
+        } catch {
+          // Best effort
+        }
+      }
     }
   }
 }

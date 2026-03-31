@@ -11,7 +11,7 @@ import {
 } from "../tools/linear.js";
 import { STATUS } from "../statuses.js";
 
-const doneState = process.env.QA_DONE_STATE || STATUS.DONE;
+const doneState = process.env.QA_DONE_STATE || "Ready for Review";
 const rejectState = process.env.ENGINEER_PICKUP_STATE || STATUS.IN_DEVELOPMENT;
 
 export const role: RoleConfig = {
@@ -48,12 +48,13 @@ export const role: RoleConfig = {
     stateName: process.env.QA_PICKUP_STATE || STATUS.IN_REVIEW,
   },
   inProgressState: process.env.QA_IN_PROGRESS_STATE || STATUS.IN_REVIEW,
-  doneState: process.env.QA_DONE_STATE || STATUS.DONE,
+  doneState: process.env.QA_DONE_STATE || "Ready for Review",
+  autoMoveToDone: false,
   hasDevAgent: true,
   maxTurns: 20,
   model: "claude-sonnet-4-6",
   devAgentModel: "sonnet",
-  effort: "low",
+  effort: "medium",
   maxBudgetUsd: 3,
   fallbackModel: "claude-haiku-4-5-20251001",
   disallowedTools: ["Edit", "Write"],

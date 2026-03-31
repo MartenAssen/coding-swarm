@@ -82,18 +82,23 @@ export const gitPushBranch = tool(
 
 export const ghCreatePR = tool(
   "gh_create_pr",
-  "Create a GitHub pull request using the gh CLI.",
+  "Create a GitHub pull request using the gh CLI. Use labels to categorize the PR (e.g. 'bug', 'feature').",
   {
     title: z.string().describe("PR title"),
     body: z.string().describe("PR body in markdown"),
     head: z.string().describe("Head branch name"),
     base: z.string().default("main").describe("Base branch name"),
+    labels: z.array(z.string()).default([]).describe("Labels to apply to the PR, e.g. ['bug'] or ['feature']"),
   },
-  async ({ title, body, head, base }) => {
+  async ({ title, body, head, base, labels }) => {
     const repo = process.env.GITHUB_REPO;
     if (!repo) throw new Error("GITHUB_REPO not set (e.g. 'owner/repo')");
     const worktreeDir = `/data/worktrees/${head}`;
-    const result = await run("gh", ["pr", "create", "--title", title, "--body", body, "--base", base, "--head", head, "--repo", repo], worktreeDir);
+    const args = ["pr", "create", "--title", title, "--body", body, "--base", base, "--head", head, "--repo", repo];
+    if (labels.length > 0) {
+      args.push("--label", labels.join(","));
+    }
+    const result = await run("gh", args, worktreeDir);
     return { content: [{ type: "text" as const, text: result }] };
   },
 );
