@@ -88,6 +88,11 @@ LANGFUSE_PUBLIC_KEY=...           # Langfuse tracing (optional)
 LANGFUSE_SECRET_KEY=...
 LANGFUSE_BASE_URL=...
 
+# Linear label names (override if your workspace uses different labels)
+LABEL_AGENT=agent                 # Poller only picks up issues with this label
+LABEL_NO_QUESTIONS=noQuestions    # PM skips clarification when this label is present
+LABEL_SKIP_QA=skipQA              # QA is skipped, ticket auto-advances to Done
+
 # Linear workflow state names (override if your workspace uses different names)
 STATUS_BACKLOG=Backlog            # PM picks up from here
 STATUS_IN_PROGRESS=In Progress    # PM working state

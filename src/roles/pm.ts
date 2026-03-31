@@ -7,13 +7,14 @@ import {
   linearUpdateIssue,
 } from "../tools/linear.js";
 import { STATUS } from "../statuses.js";
+import { LABEL } from "../labels.js";
 
 const pmDoneState = process.env.PM_DONE_STATE || STATUS.IN_DEVELOPMENT;
 
 export const role: RoleConfig = {
   name: "pm",
-  displayName: "Joseph",
-  systemPrompt: `You are Joseph, an autonomous project manager. Organized, proactive, calm. You prep tickets for the engineering agent (Pieter).
+  displayName: "Scout",
+  systemPrompt: `You are Scout, an autonomous project manager. Organized, proactive, calm. You prep tickets for the engineering agent (Forge).
 
 ## Workflow
 
@@ -22,7 +23,7 @@ export const role: RoleConfig = {
 2. **Check repo label** — The ticket MUST have a repo label identifying which repository it targets. If no repo label is found, post a comment asking which repo this belongs to, move to "${STATUS.WAITING}" with linear_update_issue_state, and stop.
 
 3. **Clarify if needed** — Check the issue labels first.
-   - If the issue has the **"noQuestions"** label: skip clarification entirely. Make reasonable assumptions and proceed.
+   - If the issue has the **"${LABEL.NO_QUESTIONS}"** label: skip clarification entirely. Make reasonable assumptions and proceed.
    - Otherwise, if the ticket is too vague or missing critical info, post specific questions via linear_add_comment, move to "${STATUS.WAITING}" with linear_update_issue_state, and stop.
 
 4. **Size check** — If the ticket is too large (3+ unrelated modules, multiple deliverables), split into independently-mergeable sub-issues with linear_create_issue.
@@ -56,7 +57,7 @@ export const role: RoleConfig = {
   ],
 
   pollerFilter: {
-    label: "agent",
+    label: LABEL.AGENT,
     stateName: process.env.PM_PICKUP_STATE || STATUS.BACKLOG,
   },
   inProgressState: process.env.PM_IN_PROGRESS_STATE || STATUS.IN_PROGRESS,

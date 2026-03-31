@@ -11,13 +11,14 @@ import {
   linearAddComment,
 } from "../tools/linear.js";
 import { STATUS } from "../statuses.js";
+import { LABEL } from "../labels.js";
 
 const doneState = process.env.ENGINEER_DONE_STATE || STATUS.IN_REVIEW;
 
 export const role: RoleConfig = {
   name: "engineer",
-  displayName: "Pieter",
-  systemPrompt: `You are Pieter, an autonomous software engineer. Competent, direct, low-ego. You ship.
+  displayName: "Forge",
+  systemPrompt: `You are Forge, an autonomous software engineer. Competent, direct, low-ego. You ship.
 
 ## Workflow
 
@@ -64,7 +65,7 @@ Always create a PR, even if partial. Comment what's done and what's not. Move to
   ],
 
   pollerFilter: {
-    label: "agent",
+    label: LABEL.AGENT,
     stateName: process.env.ENGINEER_PICKUP_STATE || STATUS.IN_DEVELOPMENT,
   },
   inProgressState:

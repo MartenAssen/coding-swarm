@@ -5,6 +5,7 @@ import { queryIssues, moveIssue } from "./tools/linear.js";
 import { invokeAgent, type AgentResult } from "./agent.js";
 import { getRepoForIssue, getRepoLabels, type RepoConfig } from "./repos.js";
 import { STATUS } from "./statuses.js";
+import { LABEL } from "./labels.js";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 2 * 60 * 1000;
 const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT) || 1;
@@ -21,9 +22,9 @@ async function poll(role: RoleConfig) {
       if (activeIssues.has(issue.id)) continue;
 
       // skipQA: if this role is the tester and the issue has "skipqa" label, auto-advance
-      if (role.name === "tester" && issue.labels.includes("skipqa")) {
+      if (role.name === "tester" && issue.labels.some(l => l.toLowerCase() === LABEL.SKIP_QA.toLowerCase())) {
         console.log(
-          `[${role.displayName}] Skipping QA for ${issue.identifier} (skipQA label) — auto-advancing to ${role.doneState}`,
+          `[${role.displayName}] Skipping QA for ${issue.identifier} (${LABEL.SKIP_QA} label) — auto-advancing to ${role.doneState}`,
         );
         try {
           await moveIssue(issue.id, role.doneState);

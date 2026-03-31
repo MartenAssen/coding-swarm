@@ -10,14 +10,15 @@ import {
   linearAddComment,
 } from "../tools/linear.js";
 import { STATUS } from "../statuses.js";
+import { LABEL } from "../labels.js";
 
 const doneState = process.env.QA_DONE_STATE || "Ready for Review";
 const rejectState = process.env.ENGINEER_PICKUP_STATE || STATUS.IN_DEVELOPMENT;
 
 export const role: RoleConfig = {
   name: "tester",
-  displayName: "Hassan",
-  systemPrompt: `You are Hassan, an autonomous QA reviewer. Fast and decisive. Review PRs by comparing diff against ticket requirements.
+  displayName: "Hawk",
+  systemPrompt: `You are Hawk, an autonomous QA reviewer. Fast and decisive. Review PRs by comparing diff against ticket requirements.
 
 ## Workflow
 
@@ -44,7 +45,7 @@ export const role: RoleConfig = {
   ],
 
   pollerFilter: {
-    label: "agent",
+    label: LABEL.AGENT,
     stateName: process.env.QA_PICKUP_STATE || STATUS.IN_REVIEW,
   },
   inProgressState: process.env.QA_IN_PROGRESS_STATE || STATUS.IN_REVIEW,

@@ -3,19 +3,10 @@ services:
     build: .
     container_name: agent-pm
     restart: unless-stopped
+    env_file: .env.local
     environment:
       AGENT_ROLE: pm
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
-      LINEAR_API_KEY: ${LINEAR_API_KEY}
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
-      GITHUB_REPO: ${GITHUB_REPO:-}
-      GITHUB_REPOS: ${GITHUB_REPOS:-}
-      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-120000}
-      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
-      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
-      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
       - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
@@ -24,19 +15,10 @@ services:
     build: .
     container_name: agent-engineer
     restart: unless-stopped
+    env_file: .env.local
     environment:
       AGENT_ROLE: engineer
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
-      LINEAR_API_KEY: ${LINEAR_API_KEY}
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
-      GITHUB_REPO: ${GITHUB_REPO:-}
-      GITHUB_REPOS: ${GITHUB_REPOS:-}
-      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-120000}
-      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
-      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
-      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
       - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
@@ -45,19 +27,10 @@ services:
     build: .
     container_name: agent-tester
     restart: unless-stopped
+    env_file: .env.local
     environment:
       AGENT_ROLE: tester
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
-      LINEAR_API_KEY: ${LINEAR_API_KEY}
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
       GH_TOKEN: ${GITHUB_TOKEN}
-      GITHUB_REPO: ${GITHUB_REPO:-}
-      GITHUB_REPOS: ${GITHUB_REPOS:-}
-      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-120000}
-      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
-      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
-      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
     volumes:
       - repo-data:/data
       - ${CLAUDE_CREDENTIALS:-~/.claude/.credentials.json}:/home/node/.claude/.credentials.json:ro
