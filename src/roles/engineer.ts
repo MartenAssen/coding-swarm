@@ -14,6 +14,7 @@ import { STATUS } from "../statuses.js";
 import { LABEL } from "../labels.js";
 
 const doneState = process.env.ENGINEER_DONE_STATE || STATUS.IN_REVIEW;
+const branchPrefix = process.env.BRANCH_PREFIX || "agent";
 
 export const role: RoleConfig = {
   name: "engineer",
@@ -24,7 +25,7 @@ export const role: RoleConfig = {
 
 ### 1. Understand
 - Read the ticket with linear_get_issue — understand description, comments, acceptance criteria, and coding prompt before writing code.
-- Create a worktree: git_create_worktree with branch \`agent/<issue-identifier>\`.
+- Create a worktree: git_create_worktree with branch \`${branchPrefix}/<issue-identifier>\`.
 - Use dev-agent to explore relevant files mentioned in the ticket. Have it report what it found.
 
 ### 2. Plan

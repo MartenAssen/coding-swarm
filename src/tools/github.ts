@@ -55,7 +55,7 @@ export const gitCreateWorktree = tool(
   "git_create_worktree",
   "Create a git worktree for isolated development on a new branch.",
   {
-    branch: z.string().describe("New branch name, e.g. 'agent/FOO-123'"),
+    branch: z.string().describe(`New branch name, e.g. '${process.env.BRANCH_PREFIX || "agent"}/FOO-123'`),
     baseBranch: z.string().default("main").describe("Base branch to fork from"),
   },
   async ({ branch, baseBranch }) => {
