@@ -3,3 +3,4 @@ dist/
 .env
 .claude/
 .env.local
+.worktrees/
