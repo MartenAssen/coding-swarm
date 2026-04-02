@@ -36,6 +36,21 @@ async function poll(role: RoleConfig) {
         continue;
       }
 
+      // skipE2E: if this role is the e2e tester and the issue has "skipE2E" label, auto-advance
+      if (role.name === "e2e" && issue.labels.some(l => l.toLowerCase() === LABEL.SKIP_E2E.toLowerCase())) {
+        console.log(
+          `[${role.displayName}] Skipping E2E for ${issue.identifier} (${LABEL.SKIP_E2E} label) — auto-advancing to ${role.doneState}`,
+        );
+        try {
+          await moveIssue(issue.id, role.doneState);
+        } catch {
+          console.warn(
+            `[${role.displayName}] Could not auto-advance ${issue.identifier}`,
+          );
+        }
+        continue;
+      }
+
       // Resolve which repo this issue targets
       const repoConfig = getRepoForIssue(issue.labels);
       if (!repoConfig) {
