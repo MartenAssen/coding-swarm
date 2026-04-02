@@ -100,6 +100,16 @@ export async function invokeAgent(
         tools: role.tools,
       });
 
+      // Playwright MCP server for E2E testing (browser automation)
+      const playwrightMcpConfig: Record<string, any> = role.name === "e2e"
+        ? {
+            "playwright": {
+              command: "npx",
+              args: ["@anthropic-ai/mcp-server-playwright@latest", "--headless"],
+            },
+          }
+        : {};
+
       const agents: Record<string, any> = {};
       if (role.hasDevAgent) {
         agents["dev-agent"] = {
@@ -150,6 +160,7 @@ export async function invokeAgent(
           stderr: (data: string) => process.stderr.write(data),
           mcpServers: {
             [mcpServerName]: toolServer,
+            ...playwrightMcpConfig,
           },
           agents,
         },
