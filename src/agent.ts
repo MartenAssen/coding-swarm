@@ -108,7 +108,7 @@ export async function invokeAgent(
         ? {
             "playwright": {
               command: "npx",
-              args: ["@anthropic-ai/mcp-server-playwright@0.1.12", "--headless"],
+              args: ["@playwright/mcp@0.0.70", "--headless"],
               env: { PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright" },
             },
           }
