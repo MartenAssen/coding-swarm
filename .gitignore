@@ -4,3 +4,7 @@ dist/
 .claude/
 .env.local
 .worktrees/
+
+# E2E agent env files (contain secrets)
+envs/*
+!envs/.gitkeep
