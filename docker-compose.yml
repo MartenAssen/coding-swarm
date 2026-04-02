@@ -130,6 +130,8 @@ services:
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
+      E2E_TEST_EMAIL: ${E2E_TEST_EMAIL:-}
+      E2E_TEST_PASSWORD: ${E2E_TEST_PASSWORD:-}
     volumes:
       - repo-data:/data
       - ./envs:/data/envs:ro

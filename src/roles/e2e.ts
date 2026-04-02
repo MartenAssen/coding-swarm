@@ -27,23 +27,51 @@ export const role: RoleConfig = {
 - git_create_worktree to check out the PR branch.
 - Send dev-agent to: read the README for start instructions, copy .env from /data/envs/{repo-name}/ to the worktree root, start the app (npm run dev, bun dev, uvicorn, etc.), and poll until it responds on the expected port (max 60 seconds). Dev-agent should report the URL (e.g. http://localhost:3000).
 
-### 2. Exploration
+### 2. Authentication
+Most apps require login. Use the dev-agent to authenticate BEFORE browser testing:
+- Dev-agent runs a Node.js script in the worktree to sign in with Supabase:
+  \`\`\`
+  const { createClient } = require('@supabase/supabase-js');
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const { data } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email: process.env.E2E_TEST_EMAIL
+  });
+  // Output the access_token and refresh_token
+  \`\`\`
+- Or use signInWithPassword if E2E_TEST_PASSWORD is set:
+  \`\`\`
+  const supabase = createClient(url, anonKey);
+  const { data } = await supabase.auth.signInWithPassword({
+    email: process.env.E2E_TEST_EMAIL,
+    password: process.env.E2E_TEST_PASSWORD
+  });
+  \`\`\`
+- Dev-agent reports back the access_token and refresh_token.
+- After browser_navigate to the app, use browser_evaluate to inject the session:
+  \`\`\`
+  browser_evaluate: localStorage.setItem('sb-<project-ref>-auth-token', JSON.stringify({access_token: '...', refresh_token: '...'}))
+  \`\`\`
+- Then browser_navigate to the app again (or reload) — you should now be logged in.
+- If no E2E_TEST_EMAIL is configured, skip auth and note it in the report.
+
+### 3. Exploration
 - browser_navigate to the app URL reported by dev-agent.
 - browser_snapshot to understand the page structure (accessibility tree).
 - Navigate to the relevant page if the change is on a specific route.
 
-### 3. Verification
+### 4. Verification
 For each acceptance criterion from the ticket:
 - Perform the required actions (browser_click, browser_fill, browser_navigate, browser_press_key).
 - browser_snapshot to read the result.
 - browser_take_screenshot as visual evidence.
 - Assess: does this meet the criterion? Record pass/fail with reasoning.
 
-### 4. Free Exploration
+### 5. Free Exploration
 - Check related flows — does the change break anything else?
 - Basic smoke test: navigation works, no console errors, pages load.
 
-### 5. Reporting & Decision
+### 6. Reporting & Decision
 Post a Linear comment (linear_add_comment) with:
 - Per criterion: ✅ pass or ❌ fail + reasoning
 - Any additional findings from exploration
@@ -52,7 +80,7 @@ Post a Linear comment (linear_add_comment) with:
 **Approve**: gh_pr_review approve, move to "${doneState}" with linear_update_issue_state.
 **Reject**: gh_pr_review request-changes with specific findings, move to "${rejectState}" with linear_update_issue_state.
 
-### 6. Cleanup
+### 7. Cleanup
 - Tell dev-agent to stop the running app process.
 - git_cleanup_worktree.
 
