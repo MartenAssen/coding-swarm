@@ -109,12 +109,15 @@ export async function invokeAgent(
             "playwright": {
               command: "npx",
               args: ["@playwright/mcp@0.0.70", "--headless"],
-              env: { PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright" },
+              env: {
+                ...process.env,
+                PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright",
+              },
             },
           }
         : {};
       if (role.name === "e2e") {
-        console.log("[e2e] Playwright MCP server configured (headless)");
+        console.log("[e2e] Playwright MCP server configured (headless, browsers at /ms-playwright)");
       }
 
       const agents: Record<string, any> = {};
