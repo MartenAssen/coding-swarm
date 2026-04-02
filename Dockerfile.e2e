@@ -36,13 +36,12 @@ RUN npm install -g pnpm
 # Claude Code CLI (needed by the agent SDK for dev-agent subagent)
 RUN npm install -g @anthropic-ai/claude-code
 
-# Playwright with Chromium for E2E testing
-# Install to shared path accessible by both root (build) and node (runtime)
+# Playwright MCP server + Chromium for E2E testing
+# Install MCP server first, then install browsers using ITS bundled Playwright
+# so the browser version matches what the MCP server expects
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN npx playwright install --with-deps chromium
-
-# Pre-install Playwright MCP server so npx doesn't need to download at runtime
 RUN npm install -g @playwright/mcp@0.0.70
+RUN cd /usr/local/lib/node_modules/@playwright/mcp && npx playwright install --with-deps chromium
 
 WORKDIR /app
 COPY package.json ./
