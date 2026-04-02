@@ -28,62 +28,47 @@ export const role: RoleConfig = {
 - Send dev-agent to: read the README for start instructions, copy .env from /data/envs/{repo-name}/ to the worktree root, start the app (npm run dev, bun dev, uvicorn, etc.), and poll until it responds on the expected port (max 60 seconds). Dev-agent should report the URL (e.g. http://localhost:3000).
 
 ### 2. Authentication
-Most apps use Supabase SSR auth (cookies, not localStorage). Use the dev-agent to get a session, then inject cookies into the browser.
+Most apps use Supabase SSR auth with server-side cookies. The app has an /auth/callback route that exchanges a code for a session and sets the correct cookies. Use this flow:
 
-**Step 1**: Dev-agent generates a session via admin API. Run this Node.js script in the worktree:
+**Step 1**: Dev-agent generates an auth code via admin API. Run this Node.js script in the worktree:
 \`\`\`
 cd <worktree-path> && node -e "
+require('dotenv').config();
 const { createClient } = require('./node_modules/@supabase/supabase-js');
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(url, serviceKey);
 (async () => {
-  // Generate magic link and extract hashed token
-  const { data: linkData } = await supabase.auth.admin.generateLink({
+  const { data, error } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email: process.env.E2E_TEST_EMAIL
   });
-  const hashedToken = linkData.properties.hashed_token;
-  // Exchange hashed token for a real session
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const anonClient = createClient(url, anonKey);
-  const { data, error } = await anonClient.auth.verifyOtp({
-    token_hash: hashedToken,
-    type: 'magiclink'
-  });
   if (error) { console.error('AUTH ERROR:', error.message); process.exit(1); }
-  console.log(JSON.stringify({
-    access_token: data.session.access_token,
-    refresh_token: data.session.refresh_token
-  }));
+  // Extract the code from the action_link URL
+  const actionUrl = new URL(data.properties.action_link);
+  const code = actionUrl.searchParams.get('code');
+  if (code) {
+    console.log('CODE:' + code);
+  } else {
+    // Fallback: output the full action_link
+    console.log('LINK:' + data.properties.action_link);
+  }
 })();
 "
 \`\`\`
-Dev-agent reports back the access_token and refresh_token as JSON.
+Dev-agent reports back the code (or link).
 
-**Step 2**: Navigate to the app first, then inject the auth cookies via browser_evaluate:
+**Step 2**: Navigate the browser to the app's auth callback with the code:
 \`\`\`
-browser_navigate to http://localhost:<port>
-browser_evaluate: () => {
-  const projectRef = '<extract from NEXT_PUBLIC_SUPABASE_URL, e.g. mzweivwnsimcuxengkos>';
-  const accessToken = '<from step 1>';
-  const refreshToken = '<from step 1>';
-  // Supabase SSR stores auth in cookies with chunked format
-  const cookieBase = 'sb-' + projectRef + '-auth-token';
-  const sessionStr = JSON.stringify({ access_token: accessToken, refresh_token: refreshToken });
-  document.cookie = cookieBase + '=' + encodeURIComponent(sessionStr) + '; path=/; max-age=3600';
-  // Also set in base64 chunked format that @supabase/ssr expects
-  const base64 = btoa(sessionStr);
-  document.cookie = cookieBase + '.0=' + encodeURIComponent('base64-' + base64) + '; path=/; max-age=3600';
-}
+browser_navigate to http://localhost:<port>/auth/callback?code=<code-from-step-1>
 \`\`\`
+This triggers the server-side exchangeCodeForSession, which sets the correct auth cookies automatically. The callback then redirects to the homepage.
 
-**Step 3**: Reload the page — browser_navigate to the same URL again. You should now be authenticated.
-
-**Step 4**: Verify auth by taking a browser_snapshot. If you see the app content (not a login page), auth is successful.
+**Step 3**: Verify auth by taking a browser_snapshot. If you see the app content (not a login page), auth is successful.
 
 - If no E2E_TEST_EMAIL is set, skip auth and note it in the report.
 - If auth fails after 2 attempts, proceed with whatever pages are accessible and note auth failure in the report.
+- IMPORTANT: Do NOT try to set cookies manually via browser_evaluate. The server-side callback is the only reliable way.
 
 ### 3. Exploration
 - browser_navigate to the app URL reported by dev-agent.
