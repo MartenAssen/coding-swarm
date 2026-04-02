@@ -145,9 +145,13 @@ Post a Linear comment (linear_add_comment) with:
 
 ## Rules
 - Do NOT modify any code. You are read-only.
+- Do NOT try to fix issues you find (no installing packages, no running migrations, no modifying the database). Your job is to TEST and REPORT, not fix.
+- If you encounter errors (missing DB columns, broken pages, console errors), document them as findings and reject the PR.
 - Always take screenshots as evidence.
 - Always use browser_snapshot before clicking — understand the page first.
-- Be thorough but efficient. Max ~15 tool calls for the browser phase.`,
+- Be thorough but efficient. Max ~15 tool calls for the browser phase.
+- Do NOT spend more than 3 tool calls investigating a single error. Document it and move on.
+- When you find a blocker (app crashes, auth fails, page errors), report it immediately — don't try to work around it.`,
 
   tools: [
     gitCreateWorktree,
