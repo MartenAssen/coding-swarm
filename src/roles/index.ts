@@ -1,6 +1,7 @@
 import { role as pmRole } from "./pm.js";
 import { role as engineerRole } from "./engineer.js";
 import { role as testerRole } from "./qa.js";
+import { role as e2eRole } from "./e2e.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface RoleConfig {
@@ -48,6 +49,7 @@ const roles: Record<string, RoleConfig> = {
   pm: pmRole,
   engineer: engineerRole,
   tester: testerRole,
+  e2e: e2eRole,
 };
 
 export function loadRole(): RoleConfig {
