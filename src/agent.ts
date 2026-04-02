@@ -105,7 +105,7 @@ export async function invokeAgent(
         ? {
             "playwright": {
               command: "npx",
-              args: ["@anthropic-ai/mcp-server-playwright@latest", "--headless"],
+              args: ["@anthropic-ai/mcp-server-playwright@0.1.12", "--headless"],
             },
           }
         : {};

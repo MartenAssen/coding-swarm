@@ -37,6 +37,8 @@ RUN npm install -g pnpm
 RUN npm install -g @anthropic-ai/claude-code
 
 # Playwright with Chromium for E2E testing
+# Install to shared path accessible by both root (build) and node (runtime)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npx playwright install --with-deps chromium
 
 WORKDIR /app
@@ -46,7 +48,7 @@ COPY --from=builder /app/dist/ dist/
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh \
   && mkdir -p /data/repo /data/worktrees /data/envs /home/node/.claude \
-  && chown -R node:node /app /data /home/node/.claude
+  && chown -R node:node /app /data /home/node/.claude /ms-playwright
 
 # Run as non-root 'node' user (UID 1000, already in base image)
 USER node

@@ -12,7 +12,7 @@ import {
 import { STATUS } from "../statuses.js";
 import { LABEL } from "../labels.js";
 
-const doneState = process.env.E2E_DONE_STATE || "Ready for Review";
+const doneState = process.env.E2E_DONE_STATE || STATUS.READY_FOR_REVIEW;
 const rejectState = process.env.ENGINEER_PICKUP_STATE || STATUS.IN_DEVELOPMENT;
 
 export const role: RoleConfig = {
@@ -83,7 +83,7 @@ Post a Linear comment (linear_add_comment) with:
     stateName: process.env.E2E_PICKUP_STATE || STATUS.E2E_TESTING,
   },
   inProgressState: process.env.E2E_IN_PROGRESS_STATE || STATUS.E2E_TESTING,
-  doneState: process.env.E2E_DONE_STATE || "Ready for Review",
+  doneState: process.env.E2E_DONE_STATE || STATUS.READY_FOR_REVIEW,
   autoMoveToDone: false,
   hasDevAgent: true,
   maxTurns: 50,
