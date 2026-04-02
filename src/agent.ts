@@ -108,7 +108,7 @@ export async function invokeAgent(
         ? {
             "playwright": {
               command: "npx",
-              args: ["@playwright/mcp@0.0.70", "--headless"],
+              args: ["@playwright/mcp@0.0.70", "--headless", "--browser", "chromium"],
               env: {
                 ...process.env,
                 PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright",
