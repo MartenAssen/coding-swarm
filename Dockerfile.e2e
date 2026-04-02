@@ -41,6 +41,9 @@ RUN npm install -g @anthropic-ai/claude-code
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npx playwright install --with-deps chromium
 
+# Pre-install Playwright MCP server so npx doesn't need to download at runtime
+RUN npm install -g @anthropic-ai/mcp-server-playwright@0.1.12
+
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --legacy-peer-deps

@@ -36,7 +36,10 @@ function formatMessage(message: any): string {
 
     const tools = content
       .filter((b: any) => b.type === "tool_use")
-      .map((b: any) => b.name);
+      .map((b: any) => {
+        const input = b.input ? JSON.stringify(b.input).slice(0, 120) : "";
+        return input ? `${b.name}(${input})` : b.name;
+      });
     if (tools.length) {
       parts.push(`tools=[${tools.join(", ")}]`);
     }
@@ -106,9 +109,13 @@ export async function invokeAgent(
             "playwright": {
               command: "npx",
               args: ["@anthropic-ai/mcp-server-playwright@0.1.12", "--headless"],
+              env: { PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright" },
             },
           }
         : {};
+      if (role.name === "e2e") {
+        console.log("[e2e] Playwright MCP server configured (headless)");
+      }
 
       const agents: Record<string, any> = {};
       if (role.hasDevAgent) {
