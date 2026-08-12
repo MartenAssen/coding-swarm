@@ -58,14 +58,7 @@ Laat `postgres` op `default` staan — die hoeft niet vanaf buiten bereikbaar te
 
 ## Na de eerste deploy
 
-**`gh` authenticeren in de container.** De `gh_*` MCP-tools shellen naar `gh`. Eenmalig, blijft staan via het `jupietre-gh-config`-volume:
-
-```bash
-docker exec -it jupietre-web gh auth login   # GitHub.com → HTTPS → web browser
-docker exec -it jupietre-web gh auth status
-```
-
-Zonder dit faalt elke `gh_create_pr`.
+**GitHub-token.** Zie [GitHub-token](#github-token) hieronder. Sla `gh auth login` over: zodra `GITHUB_TOKEN` in de env staat, negeert de `gh` CLI opgeslagen credentials.
 
 **Linear-poller aanzetten.** Hij staat uit via `DISABLE_LINEAR_POLLER=1`. Dat is bewust: bij de eerste boot zou `lib/linear/seed-from-env.ts` anders automatisch een poller aanmaken met `defaultLabel: "agent"`, terwijl jouw oude setup `mas-agent` gebruikte. Volgorde:
 
@@ -73,6 +66,38 @@ Zonder dit faalt elke `gh_create_pr`.
 2. Zet `DISABLE_LINEAR_POLLER=0` in Environment en redeploy.
 
 **Repos.** `GITHUB_REPOS` (`label:owner/repo`) seedt de repo-dropdown op `/sessions/new` en cloont ze bij de eerste boot naar `/data/repos`. Die sources zijn read-only voor de agents: elke sessie krijgt een eigen worktree onder `/app/data/worktrees/<sessionId>`.
+
+## GitHub-token
+
+De app raakt GitHub op vijf plekken:
+
+| operatie | code | rechten |
+| --- | --- | --- |
+| `git clone https://x-access-token:TOKEN@…` | `lib/repos/manager.ts:56` | Contents: read |
+| `git push` van sessie-branches | agent-worktrees | Contents: write |
+| `gh repo view --json nameWithOwner` | `lib/agent/mcp-tools/github.ts:80` | Metadata: read |
+| `gh pr create --label …` | `github.ts:194` | Pull requests: write + Issues: write |
+| `gh pr review --approve` / `--request-changes` | `github.ts:258` | Pull requests: write |
+
+**Fine-grained PAT** (voorkeur), owner = de org, scope = alleen de repos uit `GITHUB_REPOS`:
+
+| permission | waarde |
+| --- | --- |
+| Contents | Read and write |
+| Pull requests | Read and write |
+| Issues | Read and write |
+| Metadata | Read (verplicht) |
+| Workflows | Write — alleen als agents `.github/workflows/*` mogen wijzigen; zonder dit weigert GitHub die push |
+
+Staat de org geen fine-grained PATs toe, gebruik dan een classic PAT met `repo` + `read:org` (+ `workflow` indien nodig) en autoriseer hem voor de org als SAML SSO aanstaat.
+
+### `gh auth login` is niet nodig
+
+De `gh` CLI geeft `GH_TOKEN`/`GITHUB_TOKEN` uit de env voorrang boven opgeslagen credentials. Omdat `docker-compose.yml` de env inlaadt via `env_file: .env`, wint de PAT altijd. Je kunt niet op `gh auth login` leunen: zonder `GITHUB_TOKEN` kan `lib/repos/manager.ts` geen private repos clonen. Eén token in de env dus. (Dit wijkt af van stap 6 in `DEPLOY.md`, die nog van vóór de env-token uitgaat.)
+
+### Eén token kan geen eigen PR's approven
+
+Maakt de engineer een PR met token X, dan faalt `gh_pr_review --approve` van de QA-agent met *"Can not approve your own pull request"* als die ook token X gebruikt. Gebruik daarvoor de **Connections**-UI: een per-agent PAT die de env-token overschrijft (`lib/agent/mcp-tools/index.ts:82-88`). Zet daar een PAT van een tweede GitHub-account voor de QA-agent, of laat QA alleen `--request-changes` doen en merge zelf.
 
 ## Wat er niet meer via env gaat
 
