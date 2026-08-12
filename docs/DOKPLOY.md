@@ -21,7 +21,7 @@ Dokploy deployt de base-file met een expliciete `-f`, dus de override — en dus
 1. **Create → Compose** (niet "Application" — we willen app + Postgres samen beheerd).
 2. **Source**: Git provider → `MartenAssen/coding-swarm`, branch `master`. Compose-pad: `docker-compose.yml`.
 3. **Environment**: paste de volledige inhoud van `.env.dokploy` (staat in de repo-root op je werkmachine, gitignored). Vervang `__DOMEIN__` op beide plekken door je hostname.
-4. **Domains**: voeg je hostname toe, service `web`, container-poort `3000`, HTTPS aan met Let's Encrypt.
+4. **Domains**: voeg je hostname toe, service `web`, container-poort `3000`. HTTPS met Let's Encrypt aan — **behalve** als je via Cloudflare Tunnel werkt, zie [Cloudflare Tunnel](#cloudflare-tunnel).
 5. **Preview Compose** — klik dit vóór de deploy. Controleer in de gegenereerde YAML dat de `web`-service:
    - Traefik-labels heeft met jouw `Host(...)`-rule en `loadbalancer.server.port=3000`
    - op `dokploy-network` zit
@@ -66,6 +66,40 @@ Laat `postgres` op `default` staan — die hoeft niet vanaf buiten bereikbaar te
 2. Zet `DISABLE_LINEAR_POLLER=0` in Environment en redeploy.
 
 **Repos.** `GITHUB_REPOS` (`label:owner/repo`) seedt de repo-dropdown op `/sessions/new` en cloont ze bij de eerste boot naar `/data/repos`. Die sources zijn read-only voor de agents: elke sessie krijgt een eigen worktree onder `/app/data/worktrees/<sessionId>`.
+
+## Cloudflare Tunnel
+
+Draait dit op een homeserver zonder open poorten, dan kan Cloudflare Tunnel de app publiceren. Eén domein kan naar meerdere servers tunnelen: een hostname hoort bij precies één tunnel, maar je kunt onbeperkt hostnames en tunnels onder hetzelfde domein hangen. Heb je al een tunnel naar een andere machine, dan komt er simpelweg een tweede `cloudflared` op deze server bij — de bestaande blijft ongemoeid.
+
+### Opzet
+
+1. Zero Trust → Networks → Tunnels → **Create a tunnel** (type `cloudflared`), en installeer de connector op de machine waar Dokploy draait.
+2. **Public hostname**: subdomein (bv. `agents`) + je domein, service:
+
+   | cloudflared draait als | service-URL |
+   | --- | --- |
+   | host-service (`systemd`) | `http://localhost:80` |
+   | Docker-container | `http://<dokploy-traefik-container>:80` — check de naam met `docker ps`, en zet de container op `dokploy-network` |
+
+   Wijs de tunnel naar **Traefik op poort 80**, niet rechtstreeks naar `web:3000`. Traefik routeert op de `Host`-header, dus zo kun je later meer apps onder hetzelfde tunnel-endpoint hangen.
+3. Cloudflare zet zelf het `CNAME`-record. Laat de proxy (oranje wolk) aan.
+
+### Geen Let's Encrypt
+
+Cloudflare termineert TLS aan de edge en de hop naar `cloudflared` is al versleuteld. Laat in Dokploy's Domains-paneel HTTPS/Let's Encrypt daarom **uit**: de HTTP-01 challenge verwacht publieke poort 80, die je achter een tunnel niet hebt. Traefik serveert plain HTTP op de `Host`-rule, Cloudflare doet de rest.
+
+Zet `APP_URL=https://<hostname>` (niet `http://`) — de app gebruikt die waarde voor absolute links en voor origin/CSRF-checks.
+
+### Timeouts zijn geen probleem
+
+Cloudflare's proxy verbreekt een verbinding die 100s stil is (error 524). Dat raakt deze app niet:
+
+- `app/api/sessions/[id]/stream/route.ts:33-35` stuurt elke 25s een `: ping` heartbeat, expliciet "so intermediaries don't close the stream".
+- Turns starten als `void startTurn(...)` (o.a. `app/api/sessions/[id]/messages/route.ts:35`) — de POST antwoordt direct, het agent-werk loopt async door en resultaten komen via SSE binnen.
+
+### Als je Cloudflare Access ervoor zet
+
+Verstandig voor een agent-platform, maar maak dan een **bypass-policy voor `/api/hooks/*`**. Die endpoint is het externe ingangspunt op de event-bus en heeft bewust geen sessie-auth (`app/api/hooks/[key]/route.ts`) — hij leunt op een geheime key in het pad plus 60 requests/minuut. Access ervoor zetten breekt elke inkomende webhook.
 
 ## GitHub-token
 
