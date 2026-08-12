@@ -71,18 +71,26 @@ Laat `postgres` op `default` staan — die hoeft niet vanaf buiten bereikbaar te
 
 Draait dit op een homeserver zonder open poorten, dan kan Cloudflare Tunnel de app publiceren. Eén domein kan naar meerdere servers tunnelen: een hostname hoort bij precies één tunnel, maar je kunt onbeperkt hostnames en tunnels onder hetzelfde domein hangen. Heb je al een tunnel naar een andere machine, dan komt er simpelweg een tweede `cloudflared` op deze server bij — de bestaande blijft ongemoeid.
 
+### Deze server
+
+Geverifieerd op `ubuntuserver` (tailnet-IP `100.77.98.57`):
+
+| poort | wat er draait |
+| --- | --- |
+| 3000 | Dokploy UI |
+| 80 | Traefik — geeft `404 page not found` voor een onbekende `Host`, dat is correct |
+| 443 | Traefik met zijn `TRAEFIK DEFAULT CERT` self-signed cert |
+
+Omdat Traefik 443 al bezet houdt, is `tailscale serve` hier geen optie zonder naar een andere poort uit te wijken. De tunnel gaat naar **poort 80**.
+
 ### Opzet
 
-1. Zero Trust → Networks → Tunnels → **Create a tunnel** (type `cloudflared`), en installeer de connector op de machine waar Dokploy draait.
-2. **Public hostname**: subdomein (bv. `agents`) + je domein, service:
+1. Zero Trust → Networks → Tunnels → **Create a tunnel** (type `cloudflared`). Installeer de connector als host-service op `ubuntuserver` — Cloudflare geeft je het `apt`-commando met token erin. Als host-service kan hij direct bij `localhost:80`; kies je toch een Docker-container, dan moet die op `dokploy-network` en naar de Traefik-containernaam wijzen (`docker ps`).
+2. **Public hostname**: `agents` + `assenhomelab.nl`, service `http://localhost:80`.
 
-   | cloudflared draait als | service-URL |
-   | --- | --- |
-   | host-service (`systemd`) | `http://localhost:80` |
-   | Docker-container | `http://<dokploy-traefik-container>:80` — check de naam met `docker ps`, en zet de container op `dokploy-network` |
-
-   Wijs de tunnel naar **Traefik op poort 80**, niet rechtstreeks naar `web:3000`. Traefik routeert op de `Host`-header, dus zo kun je later meer apps onder hetzelfde tunnel-endpoint hangen.
+   Wijs de tunnel naar **Traefik**, niet rechtstreeks naar `web:3000`. Traefik routeert op de `Host`-header, dus zo hang je later meer apps onder dezelfde tunnel zonder iets te herconfigureren.
 3. Cloudflare zet zelf het `CNAME`-record. Laat de proxy (oranje wolk) aan.
+4. In Dokploy → Domains: `agents.assenhomelab.nl`, service `web`, poort `3000`, **HTTPS uit**.
 
 ### Geen Let's Encrypt
 
@@ -97,9 +105,19 @@ Cloudflare's proxy verbreekt een verbinding die 100s stil is (error 524). Dat ra
 - `app/api/sessions/[id]/stream/route.ts:33-35` stuurt elke 25s een `: ping` heartbeat, expliciet "so intermediaries don't close the stream".
 - Turns starten als `void startTurn(...)` (o.a. `app/api/sessions/[id]/messages/route.ts:35`) — de POST antwoordt direct, het agent-werk loopt async door en resultaten komen via SSE binnen.
 
-### Als je Cloudflare Access ervoor zet
+### Cloudflare Access is hier geen luxe
 
-Verstandig voor een agent-platform, maar maak dan een **bypass-policy voor `/api/hooks/*`**. Die endpoint is het externe ingangspunt op de event-bus en heeft bewust geen sessie-auth (`app/api/hooks/[key]/route.ts`) — hij leunt op een geheime key in het pad plus 60 requests/minuut. Access ervoor zetten breekt elke inkomende webhook.
+De login van deze app heeft **geen rate limiting, geen lockout en geen 2FA** (`app/api/auth/login/route.ts` — één DB-lookup, `verifyPassword`, klaar). De webhook-ingest heeft wél een limiter van 60/min, de login niet. Achter die login zitten je Claude-token, je Linear-key en een GitHub PAT met write-access op je org-repos. Publiek exposen zonder extra laag betekent onbeperkt wachtwoord raden op het meest waardevolle doelwit in je netwerk.
+
+Zet daarom Access ervoor:
+
+1. Zero Trust → Access → **Applications** → Add → Self-hosted, domein `agents.assenhomelab.nl`.
+2. Policy: **Allow**, selector `Emails` → je eigen adres (of Google SSO). Session duration ruim zetten — een maand — zodat de PWA op je telefoon niet elke dag opnieuw vraagt.
+3. **Tweede Application** voor pad `/api/hooks`, policy **Bypass** → Everyone.
+
+Die tweede is niet optioneel als je de event-bus gebruikt: `/api/hooks/<key>` is het externe ingangspunt en heeft bewust geen sessie-auth (`app/api/hooks/[key]/route.ts`) — het leunt op een geheime key in het pad plus die 60 req/min. Access ervoor zetten breekt elke inkomende webhook, stil.
+
+Access laat SSE ongemoeid, dus de streaming UI blijft werken.
 
 ## GitHub-token
 
