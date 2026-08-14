@@ -59,7 +59,11 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
 }
 
 export function sessionCookieHeader(token: string): string {
-  const securePart = process.env.NODE_ENV === "production" ? "Secure; " : "";
+  // Secure follows the scheme we're actually served over, not NODE_ENV — a
+  // production build reached over plain HTTP (LAN IP, http://<host>:3100)
+  // would otherwise set a Secure cookie that the browser silently discards,
+  // so login "succeeds" with 200 and every next request is anonymous again.
+  const securePart = process.env.APP_URL?.startsWith("https://") ? "Secure; " : "";
   return `${SESSION_COOKIE}=${token}; Path=/; Max-Age=${ONE_YEAR}; HttpOnly; ${securePart}SameSite=Lax`;
 }
 
