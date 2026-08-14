@@ -14,8 +14,10 @@ services:
 
   web:
     ports:
-      # Direct host access for local dev — bypasses Caddy.
-      - "3000:3000"
+      # Direct host access for local dev — bypasses Caddy. Host-poort is
+      # instelbaar via WEB_PORT omdat 3000 op de server al door de Dokploy-UI
+      # bezet is; de container luistert altijd op 3000.
+      - "${WEB_PORT:-3000}:3000"
 
   caddy:
     image: caddy:2-alpine
