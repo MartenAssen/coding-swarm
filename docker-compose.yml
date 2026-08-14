@@ -37,6 +37,12 @@ services:
     env_file: .env
     expose:
       - "3000"
+    ports:
+      # Directe host-toegang (bv. http://<server-ip>:3100). Traefik heeft dit
+      # niet nodig — die routeert intern via `expose` — maar routeren op een
+      # kaal LAN-IP kan Traefik niet, want dat gaat op de Host-header.
+      # WEB_PORT MOET op de server gezet worden: 3000 is daar de Dokploy-UI.
+      - "${WEB_PORT:-3000}:3000"
     environment:
       # Inside the compose network, talk to postgres by service name.
       POSTGRES_URL: postgres://${POSTGRES_USER:-jupietre}:${POSTGRES_PASSWORD:-jupietre}@postgres:5432/${POSTGRES_DB:-jupietre}
